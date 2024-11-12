@@ -15,7 +15,6 @@
 
 #include "fsl_gpio.h"
 #include "fsl_cache.h"
-#include "fsl_debug_console.h"
 
 #include "fsl_gt911.h"
 
