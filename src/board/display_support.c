@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 NXP
+ * Copyright 2019-2021, 2023 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -426,6 +426,25 @@ static status_t BOARD_InitLcdPanel(void)
         GPIO_PinWrite(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, 1);
 #endif
     }
+
+    return status;
+}
+
+status_t BOARD_DeinitLcdPanel(void) {
+// TODO missing full support to match init. Might also need a reset
+    status_t status;
+
+    #if (DEMO_PANEL == DEMO_PANEL_RK055AHD091)
+    status = RM68200_Deinit(&rm68200Handle);
+
+    #elif (DEMO_PANEL_RK055MHD091 == DEMO_PANEL)
+
+    status = HX8394_Deinit(&hx8394Handle);
+
+    #else
+
+    status = RM68191_Deinit(&rm68191Handle);
+    #endif
 
     return status;
 }
