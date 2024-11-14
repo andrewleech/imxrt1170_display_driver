@@ -94,7 +94,7 @@
 #define BOARD_USER_BUTTON_NAME        "SW7"
 
 /*! @brief The board flash size */
-#define BOARD_FLASH_SIZE (0x1000000U)
+// #define BOARD_FLASH_SIZE (0x1000000U)
 
 /* SKIP_SEMC_INIT can also be defined independently */
 #ifdef USE_SDRAM
@@ -187,6 +187,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
+//#define BOARD_XTAL0_CLK_HZ 24000000U /*!< Board xtal0 frequency in Hz */
+//#define BOARD_XTAL32K_CLK_HZ 32768U  /*!< Board xtal32k frequency in Hz */
+
 /*******************************************************************************
  * API
  ******************************************************************************/
@@ -195,6 +198,10 @@ uint32_t BOARD_DebugConsoleSrcFreq(void);
 void BOARD_InitDebugConsole(void);
 
 void BOARD_ConfigMPU(void);
+
+// In mcuxpresso this is passed on cmdline via cmake
+#define SDK_I2C_BASED_COMPONENT_USED 1
+
 #if defined(SDK_I2C_BASED_COMPONENT_USED) && SDK_I2C_BASED_COMPONENT_USED
 void BOARD_LPI2C_Init(LPI2C_Type *base, uint32_t clkSrc_Hz);
 status_t BOARD_LPI2C_Send(LPI2C_Type *base,

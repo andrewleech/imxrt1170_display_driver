@@ -10,22 +10,27 @@
 
 #include "fsl_dc_fb.h"
 
+#include "py/mphal.h"
+#include "py/mpconfig.h"
+
+#define PRINTF(...)   mp_printf(&mp_plat_print, "lvgl: " __VA_ARGS__)
+
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
 
 /* @TEST_ANCHOR */
 
-#define DEMO_PANEL_RK055AHD091 0 /* 720 * 1280 */
-#define DEMO_PANEL_RK055IQH091 1 /* 540 * 960  */
-#define DEMO_PANEL_RK055MHD091 2 /* 720 * 1280 */
-#define DEMO_PANEL_RASPI_7INCH 3 /* 800 * 480 */
+#define DEMO_PANEL_RK055AHD091 0 /* 720 * 1280, RK055AHD091-CTG(RK055HDMIPI4M) */
+#define DEMO_PANEL_RK055IQH091 1 /* 540 * 960,  RK055IQH091-CTG */
+#define DEMO_PANEL_RK055MHD091 2 /* 720 * 1280, RK055MHD091A0-CTG(RK055HDMIPI4MA0) */
+#define DEMO_PANEL_RASPI_7INCH 3 /* 800 * 480, Raspberry Pi 7" */
 
 #define DEMO_DISPLAY_CONTROLLER_ELCDIF  0
 #define DEMO_DISPLAY_CONTROLLER_LCDIFV2 1
 
 #ifndef DEMO_PANEL
-#define DEMO_PANEL DEMO_PANEL_RASPI_7INCH
+#define DEMO_PANEL DEMO_PANEL_RK055MHD091
 #endif
 
 #ifndef DEMO_DISPLAY_CONTROLLER
@@ -100,6 +105,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 status_t BOARD_PrepareDisplayController(void);
+status_t BOARD_DeinitLcdPanel(void);
 
 #if defined(__cplusplus)
 }
