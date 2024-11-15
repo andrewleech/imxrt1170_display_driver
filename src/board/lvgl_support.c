@@ -511,11 +511,13 @@ static void DEMO_ReadTouch(lv_indev_t * drv, lv_indev_data_t * data) {
     }
 
     /*Set the last pressed coordinates*/
-//#if DEMO_USE_ROTATE
-//    data->point.x = DEMO_PANEL_HEIGHT - (touch_y * DEMO_PANEL_HEIGHT / s_touchResolutionY);
-//    data->point.y = touch_x * DEMO_PANEL_WIDTH / s_touchResolutionX;
-//#else
-    data->point.x = touch_x * DEMO_PANEL_WIDTH / s_touchResolutionX;
-    data->point.y = touch_y * DEMO_PANEL_HEIGHT / s_touchResolutionY;
-//#endif
+    if (DEMO_PANEL_WIDTH != s_touchResolutionX) {
+        touch_x = touch_x * DEMO_PANEL_WIDTH / s_touchResolutionX;
+    }
+    data->point.x = s_touchResolutionX - 1 - touch_x;
+    
+    if (DEMO_PANEL_HEIGHT != s_touchResolutionY) {
+        touch_y = touch_y * DEMO_PANEL_HEIGHT / s_touchResolutionY;
+    }
+    data->point.y = s_touchResolutionY - 1 - touch_y;
 }
