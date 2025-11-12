@@ -141,25 +141,43 @@
 #define BOARD_CAMERA_I2C_CLOCK_SOURCE  (1U)  /* OSC24M. */
 #define BOARD_CAMERA_I2C_CLOCK_DIVIDER (12U) /* Divider = 12, LPI2C clock frequency 2M. */
 
-/*! @brief The MIPI panel pins. */
+/*! @brief The MIPI panel pins.
+ * These can be overridden by defining them before including this header.
+ */
+#ifndef BOARD_MIPI_PANEL_RST_GPIO
 #define BOARD_MIPI_PANEL_RST_GPIO   GPIO9
 #define BOARD_MIPI_PANEL_RST_PIN    1
+#endif
+
+#ifndef BOARD_MIPI_PANEL_POWER_GPIO
 #define BOARD_MIPI_PANEL_POWER_GPIO GPIO11
 #define BOARD_MIPI_PANEL_POWER_PIN  16
+#endif
+
 /* Back light pin. */
+#ifndef BOARD_MIPI_PANEL_BL_GPIO
 #define BOARD_MIPI_PANEL_BL_GPIO GPIO9
 #define BOARD_MIPI_PANEL_BL_PIN  29
+#endif
 
 /* Touch panel. */
+#ifndef BOARD_MIPI_PANEL_TOUCH_I2C_BASEADDR
 #define BOARD_MIPI_PANEL_TOUCH_I2C_BASEADDR      LPI2C5
 #define BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_ROOT    kCLOCK_Root_Lpi2c5
 #define BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_SOURCE  (1U)  /* OSC24M. */
 #define BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_DIVIDER (12U) /* Divider = 12, LPI2C clock frequency 2M. */
 #define BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_FREQ    CLOCK_GetRootClockFreq(BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_ROOT)
+#endif
+
+#ifndef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
 #define BOARD_MIPI_PANEL_TOUCH_RST_GPIO          GPIO9
 #define BOARD_MIPI_PANEL_TOUCH_RST_PIN           0
+#endif
+
+#ifndef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
 #define BOARD_MIPI_PANEL_TOUCH_INT_GPIO          GPIO8
 #define BOARD_MIPI_PANEL_TOUCH_INT_PIN           31
+#endif
 
 /*! @brief The camera pins. */
 #define BOARD_CAMERA_PWDN_GPIO GPIO9

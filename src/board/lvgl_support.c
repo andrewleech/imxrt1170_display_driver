@@ -446,6 +446,7 @@ void lv_port_indev_init(void) {
 
 static void BOARD_PullMIPIPanelTouchResetPin(bool pullUp)
 {
+    #ifdef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
     if (pullUp)
     {
         GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, 1);
@@ -454,10 +455,12 @@ static void BOARD_PullMIPIPanelTouchResetPin(bool pullUp)
     {
         GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, 0);
     }
+    #endif
 }
 
 static void BOARD_ConfigMIPIPanelTouchIntPin(gt911_int_pin_mode_t mode)
 {
+    #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
     if (mode == kGT911_IntPinInput)
     {
         BOARD_MIPI_PANEL_TOUCH_INT_GPIO->GDIR &= ~(1UL << BOARD_MIPI_PANEL_TOUCH_INT_PIN);
@@ -475,6 +478,7 @@ static void BOARD_ConfigMIPIPanelTouchIntPin(gt911_int_pin_mode_t mode)
 
         BOARD_MIPI_PANEL_TOUCH_INT_GPIO->GDIR |= (1UL << BOARD_MIPI_PANEL_TOUCH_INT_PIN);
     }
+    #endif
 }
 
 /*Initialize your touchpad*/
@@ -483,16 +487,21 @@ static void DEMO_InitTouch(void)
     status_t status;
 
     const gpio_pin_config_t resetPinConfig = {
-        .direction = kGPIO_DigitalOutput, .outputLogic = 0, .interruptMode = kGPIO_NoIntmode};
+        .direction = kGPIO_DigitalOutput, .outputLogic = 0, .interruptMode = kGPIO_NoIntmode
+    };
+    #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
     GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, &resetPinConfig);
+    #endif
+    #ifdef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
     GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, &resetPinConfig);
+    #endif
 
     status = GT911_Init(&s_touchHandle, &s_touchConfig);
 
     if (kStatus_Success != status)
     {
-        PRINTF("Touch IC initialization failed\r\n");
-        assert(false);
+        PRINTF("ERROR: Touch IC initialization failed\r\n");
+        return;
     }
 
     GT911_GetResolution(&s_touchHandle, &s_touchResolutionX, &s_touchResolutionY);

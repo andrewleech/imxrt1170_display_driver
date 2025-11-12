@@ -385,7 +385,9 @@ static status_t BOARD_InitLcdPanel(void)
 {
     status_t status;
 
+#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
     const gpio_pin_config_t pinConfig = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
+#endif
 
     const display_config_t displayConfig = {
         .resolution   = FSL_VIDEO_RESOLUTION(DEMO_PANEL_WIDTH, DEMO_PANEL_HEIGHT),
@@ -440,6 +442,10 @@ status_t BOARD_DeinitLcdPanel(void) {
     #elif (DEMO_PANEL_RK055MHD091 == DEMO_PANEL)
 
     status = HX8394_Deinit(&hx8394Handle);
+
+    #elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
+
+    status = RPI_Deinit(&rpiHandle);
 
     #else
 

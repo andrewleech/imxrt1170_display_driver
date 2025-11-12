@@ -35,6 +35,10 @@ SRC_USERMOD += $(addprefix $(SRC_DIR)/,\
 	video/fsl_rm68191.c \
 	video/fsl_rm68200.c \
 	video/fsl_video_common.c \
+	video/rpi.c \
+	video/rpi_support.c \
+	video/pca6416.c \
+	video/pca9530.c \
 )
 
 # NXP Drivers
@@ -58,7 +62,15 @@ INC += -I$(NXP_SDK)/drivers/lcdifv2
 INC += -I$(NXP_SDK)/drivers/mipi_dsi_split
 INC += -I$(NXP_SDK)/drivers/pxp
 
-CFLAGS_USERMOD += $(INC) -D_FSL_COMMON_ARM_H_=FSL_COMMON_ARM_H_ -D_FSL_COMMON_H_=FSL_COMMON_H_ 
+# LVGL includes
+INC += -I$(LVGL_DIR)
+INC += -I$(LVGL_DIR)/src
+
+# Board-specific configuration override support
+# The board can provide display_board_config.h to override pin definitions
+INC += -I$(BOARD_DIR)
+
+CFLAGS_USERMOD += $(INC) -D_FSL_COMMON_ARM_H_=FSL_COMMON_ARM_H_ -D_FSL_COMMON_H_=FSL_COMMON_H_
 
 #$(BUILD)/$(MOD_DIRNAME)/lvgl/src/draw/nxp/pxp/lv_draw_pxp_img.o: CFLAGS_USERMOD += -D_FSL_CLOCK_H_=FSL_CLOCK_H_
 
