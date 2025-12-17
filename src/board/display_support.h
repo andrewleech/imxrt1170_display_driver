@@ -57,10 +57,12 @@
 
 /*
  * Frame buffer size for compile-time allocation.
- * Set to maximum supported panel size (720x1280) to accommodate all panels.
+ * Set to maximum supported panel size to accommodate all panels:
+ * - RPI 7": 800x480 (widest)
+ * - RK055AHD091/MHD091: 720x1280 (tallest)
  * Actual panel size configured at runtime via panel_config_t.
  */
-#define DEMO_BUFFER_WIDTH  (720)
+#define DEMO_BUFFER_WIDTH  (800)
 #define DEMO_BUFFER_HEIGHT (1280)
 
 /* Where the frame buffer is shown in the screen. */

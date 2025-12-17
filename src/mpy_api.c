@@ -64,7 +64,7 @@ static mp_obj_t init_with_config(mp_obj_t config_dict) {
 
     // Validate panel dimensions against buffer size
     if (config.width > DEMO_BUFFER_WIDTH || config.height > DEMO_BUFFER_HEIGHT) {
-        mp_raise_ValueError(MP_ERROR_TEXT("panel dimensions exceed buffer size (720x1280)"));
+        mp_raise_ValueError(MP_ERROR_TEXT("panel dimensions exceed buffer size (800x1280)"));
     }
 
     // Initialize display with runtime configuration
