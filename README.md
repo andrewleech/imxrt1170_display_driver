@@ -27,50 +27,118 @@ MicroPython display driver for NXP i.MX RT1170 with LVGL 9.x support. Supports m
 
 ## Quick Start
 
-### Using RPI 7" Display
+### Complete Example: RPI 7" Display
+
+```python
+import machine
+from imxrt1170_display.panels import RPI7InchDisplay
+import lvgl as lv
+
+# Step 1: Create I2C buses for display
+# Note: Pin muxing should be configured by your board's pins.py
+# RPI 7" display uses:
+# - I2C1 for Attiny88 display controller
+# - I2C6 for PCA6416 GPIO expander
+display_i2c = machine.I2C(1, freq=100000)  # Attiny88
+gpio_i2c = machine.I2C(6, freq=100000)      # PCA6416
+
+# Step 2: Create display instance
+display = RPI7InchDisplay(
+    display_i2c=display_i2c,
+    gpio_i2c=gpio_i2c
+)
+
+# Step 3: Initialize display hardware and LVGL
+display.init()
+
+# Step 4: Use LVGL
+scr = lv.screen_active()
+label = lv.label(scr)
+label.set_text("Hello RPI 7\" Display!")
+label.center()
+
+# Optional: Adjust backlight brightness (0-255)
+display.set_brightness(200)
+```
+
+### Minimal Example: RPI 7" Display
 
 ```python
 from imxrt1170_display.panels import RPI7InchDisplay
 
-# Create display instance (uses default I2C buses)
+# Uses default I2C(1) and I2C(6)
 display = RPI7InchDisplay()
-
-# Initialize display
 display.init()
 
-# LVGL is now ready to use
+# LVGL is now ready
 import lvgl as lv
-scr = lv.screen_active()
-label = lv.label(scr)
-label.set_text("Hello World")
 ```
 
-### Using RK055MHD091 (Default Panel)
+### Complete Example: RK055MHD091 Panel
 
 ```python
 from imxrt1170_display.panels import RK055MHD091Display
+import lvgl as lv
 
+# RK055 panels don't use I2C - display controller is MIPI DSI only
 display = RK055MHD091Display()
 display.init()
+
+# Create LVGL UI
+scr = lv.screen_active()
+btn = lv.button(scr)
+btn.center()
+label = lv.label(btn)
+label.set_text("Click Me")
 ```
 
-### Using RK055AHD091
+### Other Supported Panels
 
 ```python
+# RK055AHD091 (720x1280, RM68200)
 from imxrt1170_display.panels import RK055AHD091Display
-
 display = RK055AHD091Display()
 display.init()
-```
 
-### Using RK055IQH091
-
-```python
+# RK055IQH091 (540x960, RM68191)
 from imxrt1170_display.panels import RK055IQH091Display
-
 display = RK055IQH091Display()
 display.init()
 ```
+
+## I2C Pin Configuration
+
+### Required I2C Buses for RPI 7" Display
+
+The RPI 7" display requires two I2C buses:
+
+| I2C Bus | Device | Address | Purpose |
+|---------|--------|---------|---------|
+| I2C1 | Attiny88 | 0x45 | Display controller, backlight |
+| I2C6 | PCA6416 | 0x21 | GPIO expander (reset, power) |
+
+### Board Pin Configuration
+
+I2C pin muxing must be configured in your board's `pins.py` or startup code. For the iMXRT1170-EVK:
+
+**pins.py example:**
+```python
+from machine import Pin
+
+# I2C1 for RPI display Attiny88
+Pin("GPIO_AD_32", mode=Pin.ALT5)  # LPI2C1_SDA
+Pin("GPIO_AD_33", mode=Pin.ALT5)  # LPI2C1_SCL
+
+# I2C6 for RPI display PCA6416
+Pin("GPIO_LPSR_05", mode=Pin.ALT0)  # LPI2C6_SDA
+Pin("GPIO_LPSR_04", mode=Pin.ALT0)  # LPI2C6_SCL
+```
+
+**Note**: Pin assignments vary by board. Check your schematic for correct GPIO pins and ALT modes.
+
+### RK055 Panels (No I2C Required)
+
+RK055 panels (RK055AHD091, RK055MHD091, RK055IQH091) communicate via MIPI DSI only. No I2C configuration needed.
 
 ## Board Customization
 
@@ -80,7 +148,7 @@ display.init()
 from imxrt1170_display.panels import RPI7InchDisplay
 import machine
 
-# Override I2C buses for custom board
+# Override I2C buses for custom board layout
 display = RPI7InchDisplay(
     display_i2c=machine.I2C(2, freq=100000),  # Attiny88 on I2C2
     gpio_i2c=machine.I2C(3, freq=100000)       # PCA6416 on I2C3
@@ -305,12 +373,44 @@ display = RPI7InchDisplay(
 
 ### I2C errors on init
 
-**Cause**: Wrong I2C bus or device not connected
+**Cause**: Wrong I2C bus, device not connected, or pin muxing not configured
 
 **Fix**:
-- Verify physical I2C connections
-- Check I2C bus number (1-based in MicroPython)
-- Scan I2C bus: `machine.I2C(1).scan()` to verify device address
+```python
+import machine
+
+# Step 1: Verify I2C pin muxing in your board's pins.py
+# See "I2C Pin Configuration" section above
+
+# Step 2: Scan I2C bus to verify devices
+i2c1 = machine.I2C(1, freq=100000)
+print("I2C1 devices:", [hex(addr) for addr in i2c1.scan()])
+# Expected for RPI 7": [0x45] (Attiny88)
+
+i2c6 = machine.I2C(6, freq=100000)
+print("I2C6 devices:", [hex(addr) for addr in i2c6.scan()])
+# Expected for RPI 7": [0x20] or [0x21] (PCA6416)
+
+# Step 3: If devices not found, check:
+# - Physical I2C connections (SDA, SCL, GND, VDD)
+# - Pin muxing configuration (ALT mode settings)
+# - Pull-up resistors (typically 4.7kΩ on SDA/SCL)
+```
+
+### "OSError: [Errno 19] ENODEV" on I2C operations
+
+**Cause**: I2C device not responding or wrong address
+
+**Fix**:
+```python
+# For PCA6416 address mismatch:
+display = RPI7InchDisplay(pca6416_addr=0x20)  # Try alternate address
+
+# For Attiny88 not responding:
+# - Verify display power supply (5V)
+# - Check ribbon cable connection
+# - Wait longer after power-on (Attiny needs ~2 seconds)
+```
 
 ## Project Structure
 
