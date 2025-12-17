@@ -32,20 +32,65 @@ extern "C" {
  */
 void BOARD_InitBootPins(void);
 
-/*!
- * @brief Configures pin routing and optionally pin electrical features.
- *
- */
-void BOARD_InitLpuartPins(void);              /* Function assigned for the Cortex-M7F */
+/* GPIO_LPSR_05 (coord N8), I2C5_SCL/J48[27]/U32[17]/U34[4]/J10[20] */
+/* Routed pin properties */
+#define BOARD_INITMIPIPANELPINS_I2C5_SCL_PERIPHERAL                       LPI2C5   /*!< Peripheral name */
+#define BOARD_INITMIPIPANELPINS_I2C5_SCL_SIGNAL                              SCL   /*!< Signal name */
+
+/* GPIO_LPSR_04 (coord N7), I2C5_SDA/J48[26]/U32[18]/U34[6]/J10[18] */
+/* Routed pin properties */
+#define BOARD_INITMIPIPANELPINS_I2C5_SDA_PERIPHERAL                       LPI2C5   /*!< Peripheral name */
+#define BOARD_INITMIPIPANELPINS_I2C5_SDA_SIGNAL                              SDA   /*!< Signal name */
+
+/* GPIO_AD_00 (coord N12), SIM1_TRXD/J44[C7]/J57[9]/CTP_INT/J48[29]/J25[15]/J9[14] */
+/* Routed pin properties */
+#define BOARD_INITMIPIPANELPINS_SIM1_TRXD_PERIPHERAL                       GPIO8   /*!< Peripheral name */
+#define BOARD_INITMIPIPANELPINS_SIM1_TRXD_SIGNAL                         gpio_io   /*!< Signal name */
+#define BOARD_INITMIPIPANELPINS_SIM1_TRXD_CHANNEL                            31U   /*!< Signal channel */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITMIPIPANELPINS_SIM1_TRXD_GPIO                             GPIO8   /*!< GPIO peripheral base pointer */
+#define BOARD_INITMIPIPANELPINS_SIM1_TRXD_GPIO_PIN                           31U   /*!< GPIO pin number */
+#define BOARD_INITMIPIPANELPINS_SIM1_TRXD_GPIO_PIN_MASK              (1U << 31U)   /*!< GPIO pin mask */
+
+/* GPIO_AD_01 (coord R14), SIM1_CLK/J44[C3]/J57[7]/CTP_RST_B/J48[28]/J10[4]/J25[13] */
+/* Routed pin properties */
+#define BOARD_INITMIPIPANELPINS_SIM1_CLK_PERIPHERAL                        GPIO9   /*!< Peripheral name */
+#define BOARD_INITMIPIPANELPINS_SIM1_CLK_SIGNAL                          gpio_io   /*!< Signal name */
+#define BOARD_INITMIPIPANELPINS_SIM1_CLK_CHANNEL                              0U   /*!< Signal channel */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITMIPIPANELPINS_SIM1_CLK_GPIO                              GPIO9   /*!< GPIO peripheral base pointer */
+#define BOARD_INITMIPIPANELPINS_SIM1_CLK_GPIO_PIN                             0U   /*!< GPIO pin number */
+#define BOARD_INITMIPIPANELPINS_SIM1_CLK_GPIO_PIN_MASK                (1U << 0U)   /*!< GPIO pin mask */
+
+/* GPIO_AD_02 (coord R13), SIM1_RST/J57[5]/J44[C2]/LCD_RST_B/J48[21]/J25[11]/J10[6] */
+/* Routed pin properties */
+#define BOARD_INITMIPIPANELPINS_SIM1_RST_PERIPHERAL                        GPIO9   /*!< Peripheral name */
+#define BOARD_INITMIPIPANELPINS_SIM1_RST_SIGNAL                          gpio_io   /*!< Signal name */
+#define BOARD_INITMIPIPANELPINS_SIM1_RST_CHANNEL                              1U   /*!< Signal channel */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITMIPIPANELPINS_SIM1_RST_GPIO                              GPIO9   /*!< GPIO peripheral base pointer */
+#define BOARD_INITMIPIPANELPINS_SIM1_RST_GPIO_PIN                             1U   /*!< GPIO pin number */
+#define BOARD_INITMIPIPANELPINS_SIM1_RST_GPIO_PIN_MASK                (1U << 1U)   /*!< GPIO pin mask */
+
+/* GPIO_AD_30 (coord K17), LPSPI1_SDO/U27[5]/J10[8]/Backlight_CTL/J48[34]/U46[4] */
+/* Routed pin properties */
+#define BOARD_INITMIPIPANELPINS_LPSPI1_SDO_PERIPHERAL                      GPIO9   /*!< Peripheral name */
+#define BOARD_INITMIPIPANELPINS_LPSPI1_SDO_SIGNAL                        gpio_io   /*!< Signal name */
+#define BOARD_INITMIPIPANELPINS_LPSPI1_SDO_CHANNEL                           29U   /*!< Signal channel */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITMIPIPANELPINS_LPSPI1_SDO_GPIO                            GPIO9   /*!< GPIO peripheral base pointer */
+#define BOARD_INITMIPIPANELPINS_LPSPI1_SDO_GPIO_PIN                          29U   /*!< GPIO pin number */
+#define BOARD_INITMIPIPANELPINS_LPSPI1_SDO_GPIO_PIN_MASK             (1U << 29U)   /*!< GPIO pin mask */
 
 /*!
  * @brief Configures pin routing and optionally pin electrical features.
  *
  */
 void BOARD_InitMipiPanelPins(void);           /* Function assigned for the Cortex-M7F */
-
-
-void BOARD_InitI2CPins(void);
 
 #if defined(__cplusplus)
 }

@@ -13,11 +13,21 @@
 /*
  * TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
 !!GlobalInfo
-product: Pins v9.0
+product: Pins v13.0
 processor: MIMXRT1176xxxxx
 package_id: MIMXRT1176DVMAA
 mcu_data: ksdk2_0
-processor_version: 0.9.6
+processor_version: 13.0.1
+board: MIMXRT1170-EVK
+pin_labels:
+- {pin_num: R5, pin_signal: GPIO_LPSR_10, label: 'JTAG_nTRST/J1[3]/LPSPI6_SCK /J26[9]/DMIC_DATA1', identifier: DMIC_DATA1}
+- {pin_num: D9, pin_signal: GPIO_DISP_B2_10, label: 'LPUART2_TXD/BT_UART_TXD/U354[4]/U16[2]/J25[3]/J9[4]', identifier: BT_UART_TXD;D1}
+- {pin_num: A6, pin_signal: GPIO_DISP_B2_11, label: 'LPUART2_RXD/BT_UART_RXD/U16[3]/U355[20]/J9[2]', identifier: BT_UART_RXD;D0}
+- {pin_num: B6, pin_signal: GPIO_DISP_B2_12, label: 'RGMII1_PHY_INTB/U10[31]/BT_UART_CTS/U16[5]/U355[19]/J9[6]', identifier: GPIO_DISP_B2_12;D2}
+- {pin_num: M13, pin_signal: GPIO_AD_04, label: 'SIM1_PD/J44[C8]/USER_LED_CTL1/J9[8]/J25[7]', identifier: SIM1_PD;D3}
+- {pin_num: P13, pin_signal: GPIO_AD_05, label: 'SIM1_PWR_FAIL/J9[12]/J25[5]/LCD_LPTE', identifier: SIM1_PWR_FAIL;D5}
+- {pin_num: N13, pin_signal: GPIO_AD_06, label: 'USB_OTG2_OC/U18[A2]/J9[10]/AUD_INT', identifier: D4}
+- {pin_num: L14, pin_signal: GPIO_AD_26, label: 'CSI_PWR_CTL/USER_LED_CTL2/J50[16]', identifier: RED_LED}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
  */
 
@@ -26,52 +36,28 @@ processor_version: 0.9.6
 #include "pin_mux.h"
 
 /* FUNCTION ************************************************************************************************************
- * 
+ *
  * Function Name : BOARD_InitBootPins
  * Description   : Calls initialization functions.
- * 
+ *
  * END ****************************************************************************************************************/
 void BOARD_InitBootPins(void) {
-    BOARD_InitLpuartPins();
+    /* For backward compatibility, initialize display pins.
+     * Note: UART and other board-level pins are no longer configured by this driver.
+     * Applications should configure those pins separately. */
+    BOARD_InitMipiPanelPins();
 }
-
-/*
- * TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
-BOARD_InitLpuartPins:
-- options: {callFromInitBoot: 'true', coreID: cm7, enableClock: 'true'}
-- pin_list:
-  - {pin_num: M15, peripheral: LPUART1, signal: RXD, pin_signal: GPIO_AD_25, software_input_on: Enable}
-  - {pin_num: L13, peripheral: LPUART1, signal: TXD, pin_signal: GPIO_AD_24}
- * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
- */
-
-/* FUNCTION ************************************************************************************************************
- *
- * Function Name : BOARD_InitLpuartPins, assigned for the Cortex-M7F core.
- * Description   : Configures pin routing and optionally pin electrical features.
- *
- * END ****************************************************************************************************************/
-void BOARD_InitLpuartPins(void) {
-  CLOCK_EnableClock(kCLOCK_Iomuxc);           /* LPCG on: LPCG is ON. */
-
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_AD_24_LPUART1_TXD,          /* GPIO_AD_24 is configured as LPUART1_TXD */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_AD_25_LPUART1_RXD,          /* GPIO_AD_25 is configured as LPUART1_RXD */
-      1U);                                    /* Software Input On Field: Force input path of pad GPIO_AD_25 */
-}
-
 
 /*
  * TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
 BOARD_InitMipiPanelPins:
 - options: {callFromInitBoot: 'false', coreID: cm7, enableClock: 'true'}
 - pin_list:
-  - {pin_num: K17, peripheral: GPIO9, signal: 'gpio_io, 29', pin_signal: GPIO_AD_30}
+  - {pin_num: A4, peripheral: GPIO11, signal: 'gpio_io, 16', pin_signal: GPIO_DISP_B2_15, software_input_on: Disable}
   - {pin_num: R13, peripheral: GPIO9, signal: 'gpio_io, 01', pin_signal: GPIO_AD_02}
-  - {pin_num: A4, peripheral: GPIO11, signal: 'gpio_io, 16', pin_signal: GPIO_DISP_B2_15}
+  - {pin_num: K17, peripheral: GPIO9, signal: 'gpio_io, 29', pin_signal: GPIO_AD_30}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
+ * Note: I2C and touch pins removed - Python handles all I2C initialization
  */
 
 /* FUNCTION ************************************************************************************************************
@@ -83,42 +69,20 @@ BOARD_InitMipiPanelPins:
 void BOARD_InitMipiPanelPins(void) {
   CLOCK_EnableClock(kCLOCK_Iomuxc);           /* LPCG on: LPCG is ON. */
 
+  /* Panel reset pin (LCD_RST_B) */
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_AD_02_GPIO9_IO01,           /* GPIO_AD_02 is configured as GPIO9_IO01 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
+
+  /* Backlight control pin */
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_AD_30_GPIO9_IO29,           /* GPIO_AD_30 is configured as GPIO9_IO29 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
+
+  /* Panel power pin */
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_DISP_B2_15_GPIO11_IO16,     /* GPIO_DISP_B2_15 is configured as GPIO11_IO16 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-}
-
-void BOARD_InitI2CPins(void)
-{
-#if (DEMO_PANEL_RASPI_7INCH == DEMO_PANEL)
-
-  IOMUXC_SetPinMux(
-		  IOMUXC_GPIO_LPSR_05_LPI2C5_SCL,        /* GPIO_SD_B1_11 is configured as LPI2C2_SCL */
-      1U);                                    /* Software Input On Field: Force input path of pad GPIO_AD_B1_00 */
-  IOMUXC_SetPinMux(
-		  IOMUXC_GPIO_LPSR_04_LPI2C5_SDA,        /* GPIO_SD_B1_10 is configured as LPI2C2_SDA */
-      1U);                                    /* Software Input On Field: Force input path of pad GPIO_AD_B1_01 */
-  IOMUXC_SetPinConfig(
-		  IOMUXC_GPIO_LPSR_05_LPI2C5_SCL,        /* GPIO_SD_B1_11 PAD functional properties : */
-      0x20U);                                 /* Slew Rate Field: Slow Slew Rate
-                                                 Drive Strength Field: normal driver
-                                                 Pull / Keep Select Field: Pull Disable, Highz
-                                                 Pull Up / Down Config. Field: Weak pull down
-                                                 Open Drain Field: Enabled */
-  IOMUXC_SetPinConfig(
-		  IOMUXC_GPIO_LPSR_04_LPI2C5_SDA,        /* GPIO_SD_B1_10 PAD functional properties : */
-      0x20U);                                 /* Slew Rate Field: Slow Slew Rate
-                                                 Drive Strength Field: normal driver
-                                                 Pull / Keep Select Field: Pull Disable, Highz
-                                                 Pull Up / Down Config. Field: Weak pull down
-                                                 Open Drain Field: Enabled */
-#endif
 }
 
 /***********************************************************************************************************************

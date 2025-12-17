@@ -21,15 +21,10 @@
 #define LCD_HEIGHT            DEMO_BUFFER_HEIGHT
 #define LCD_FB_BYTE_PER_PIXEL DEMO_BUFFER_BYTE_PER_PIXEL
 
-// #define LCD_RENDER_MODE       LV_DISPLAY_RENDER_MODE_PARTIAL
-#define LCD_RENDER_MODE       LV_DISPLAY_RENDER_MODE_DIRECT
-
 #define LV_PORT_DISP_INIT lv_port_disp_init
 #define LV_PORT_INDEV_INIT lv_port_indev_init
 #define LV_PORT_DISP_DEINIT lv_port_disp_deinit
 // #define LV_PORT_INDEX_DEINIT lv_port_indev_deinit
-
-#define DEMO_CleanInvalidateCacheByAddr(addr, size) DCACHE_CleanInvalidateByRange((uint32_t)(addr), size)
 
 /*******************************************************************************
  * API
@@ -42,8 +37,13 @@ extern "C" {
 
 void lv_port_pre_init(void);
 void lv_port_disp_init(void);
+void lv_port_disp_init_with_config(const panel_config_t *config);
 void lv_port_disp_deinit(void);
-void lv_port_indev_init(void);
+
+#if (LV_USE_DRAW_VGLITE || LV_USE_DRAW_VG_LITE || LV_USE_DRAW_PXP)
+void DEMO_CleanInvalidateCache(void);
+void DEMO_CleanInvalidateCacheByAddr(void *addr, int32_t dsize);
+#endif
 
 #if defined(__cplusplus)
 }

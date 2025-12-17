@@ -17,15 +17,14 @@
 #include "fsl_gpio.h"
 #include "fsl_cache.h"
 
-#include "fsl_gt911.h"
-
-#if LV_USE_GPU_NXP_VG_LITE
+#if LV_USE_DRAW_VG_LITE
 #include "vg_lite.h"
 #include "vglite_support.h"
 #endif
 
-#if LV_USE_GPU_NXP_PXP
+#if LV_USE_ROTATE_PXP
 #include "draw/nxp/pxp/lv_draw_pxp.h"
+#include "display/lv_display_private.h"
 #endif
 
 #include "py/runtime.h"
@@ -36,7 +35,7 @@
 
 /* Ratate panel or not. */
 #ifndef DEMO_USE_ROTATE
-#if LV_USE_GPU_NXP_PXP
+#if LV_USE_ROTATE_PXP
 #define DEMO_USE_ROTATE 1
 #else
 #define DEMO_USE_ROTATE 0
@@ -68,8 +67,24 @@
 #define DEMO_FB_ALIGN LV_ATTRIBUTE_MEM_ALIGN_SIZE
 #endif
 
-#define DEMO_FB_SIZE \
-    (((DEMO_BUFFER_WIDTH * DEMO_BUFFER_HEIGHT * LCD_FB_BYTE_PER_PIXEL) + DEMO_FB_ALIGN - 1) & ~(DEMO_FB_ALIGN - 1))
+#define DEMO_BUFFER_STRIDE_BYTE ((DEMO_BUFFER_WIDTH * LCD_FB_BYTE_PER_PIXEL + LV_DRAW_BUF_ALIGN - 1) & ~(LV_DRAW_BUF_ALIGN - 1))
+#define DEMO_FB_SIZE_STATIC (DEMO_BUFFER_STRIDE_BYTE * DEMO_BUFFER_HEIGHT)  // Compile-time max size
+#define COMPUTE_STRIDE(x) ((x * LCD_FB_BYTE_PER_PIXEL + LV_DRAW_BUF_ALIGN - 1) & ~(LV_DRAW_BUF_ALIGN - 1))
+
+// Helper function to get frame buffer size (runtime-based on actual panel)
+static inline size_t get_fb_size(void) {
+    const panel_config_t *config = BOARD_GetPanelConfig();
+
+    if (config != NULL) {
+        // Calculate size based on actual panel dimensions
+        size_t stride = COMPUTE_STRIDE(config->width);
+        return stride * config->height;
+    }
+
+    // Fallback to compile-time maximum if config not yet available
+    return DEMO_FB_SIZE_STATIC;
+}
+#define DEMO_FB_SIZE get_fb_size()  // Runtime calculation
 
 #if DEMO_USE_ROTATE
 #define LVGL_BUFFER_WIDTH  DEMO_BUFFER_HEIGHT
@@ -90,8 +105,9 @@
  ******************************************************************************/
 static void DEMO_FlushDisplay(lv_display_t * disp, const lv_area_t * area, uint8_t * px_map);
 
-#if (LV_USE_GPU_NXP_VG_LITE || LV_USE_GPU_NXP_PXP)
-static void DEMO_CleanInvalidateCache(lv_display_t * disp);
+#if (LV_USE_DRAW_VGLITE || LV_USE_DRAW_VG_LITE || LV_USE_DRAW_PXP)
+void DEMO_CleanInvalidateCache(void);
+void DEMO_CleanInvalidateCacheByAddr(void *addr, int32_t dsize);
 #endif
 
 static void DEMO_BufferSwitchOffCallback(void *param, void *switchOffBuffer);
@@ -168,7 +184,7 @@ void lv_port_disp_init(void) {
     status_t status;
     dc_fb_info_t fbInfo;
 
-    #if LV_USE_GPU_NXP_VG_LITE
+    #if LV_USE_DRAW_VG_LITE
     /* Initialize GPU. */
     BOARD_PrepareVGLiteController();
     #endif
@@ -225,17 +241,17 @@ void lv_port_disp_init(void) {
 
     // Changes in master (v9 development) https://github.com/lvgl/lvgl/issues/4011
 
-    lv_display_t * disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);
-    lv_display_set_flush_cb(disp, (void *)DEMO_FlushDisplay);
+    lv_display_t * disp = lv_display_create(LVGL_BUFFER_WIDTH, LVGL_BUFFER_HEIGHT);
+    lv_display_set_flush_cb(disp, DEMO_FlushDisplay);
     lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
 
     #if DEMO_USE_ROTATE
-    lv_display_set_buffers(disp, s_lvglBuffer[0], NULL, DEMO_BUFFER_WIDTH*DEMO_BUFFER_HEIGHT*DEMO_BUFFER_BYTE_PER_PIXEL, LCD_RENDER_MODE);
+    lv_display_set_buffers(disp, s_lvglBuffer[0], NULL, DEMO_FB_SIZE, LV_DISPLAY_RENDER_MODE_FULL);
     #else
-    lv_display_set_buffers(disp, s_frameBuffer[0], s_frameBuffer[1], DEMO_BUFFER_WIDTH*DEMO_BUFFER_HEIGHT*DEMO_BUFFER_BYTE_PER_PIXEL, LCD_RENDER_MODE);
+    lv_display_set_buffers(disp, s_frameBuffer[0], s_frameBuffer[1], DEMO_FB_SIZE, LV_DISPLAY_RENDER_MODE_FULL);
     #endif
 
-#if LV_USE_GPU_NXP_VG_LITE
+#if LV_USE_DRAW_VG_LITE
     if (vg_lite_init(DEFAULT_VG_LITE_TW_WIDTH, DEFAULT_VG_LITE_TW_HEIGHT) != VG_LITE_SUCCESS)
     {
         PRINTF("VGLite init error. STOP.");
@@ -252,6 +268,15 @@ void lv_port_disp_init(void) {
             ;
     }
 #endif
+}
+
+void lv_port_disp_init_with_config(const panel_config_t *config) {
+    // Store runtime panel configuration
+    BOARD_InitDisplayWithConfig(config);
+
+    // Initialize display with runtime config
+    // (uses same code path as lv_port_disp_init, but with runtime parameters)
+    lv_port_disp_init();
 }
 
 void lv_port_disp_deinit(void) {
@@ -273,10 +298,16 @@ static void DEMO_BufferSwitchOffCallback(void *param, void *switchOffBuffer) {
     #endif
 }
 
-#if (LV_USE_GPU_NXP_VG_LITE || LV_USE_GPU_NXP_PXP)
-// static void DEMO_CleanInvalidateCache(lv_disp_drv_t *disp_drv) {
-    // DEMO_FLUSH_DCACHE();
-// }
+#if (LV_USE_DRAW_VGLITE || LV_USE_DRAW_VG_LITE || LV_USE_DRAW_PXP)
+void DEMO_CleanInvalidateCache(void)
+{
+    DEMO_FLUSH_DCACHE();
+}
+
+void DEMO_CleanInvalidateCacheByAddr(void *addr, int32_t dsize)
+{
+    SCB_CleanInvalidateDCache_by_Addr(addr, dsize);
+}
 #endif
 
 static void DEMO_WaitBufferSwitchOff(void) {
@@ -292,12 +323,8 @@ static void DEMO_WaitBufferSwitchOff(void) {
     #endif
 }
 
-void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t * color_p) {
+void DEMO_FlushDisplay(lv_display_t * disp, const lv_area_t * area, uint8_t * color_p) {
 
-    if (!lv_disp_flush_is_last(disp_drv)) {
-        lv_disp_flush_ready(disp_drv);
-        return;
-    }
     #if DEMO_USE_ROTATE
 
     /*
@@ -318,82 +345,37 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
         DEMO_WaitBufferSwitchOff();
     }
 
+    DEMO_FLUSH_DCACHE();
+
     /* Copy buffer. */
     void *inactiveFrameBuffer = s_inactiveFrameBuffer;
 
-    #if __CORTEX_M == 4
-    L1CACHE_CleanInvalidateSystemCacheByRange((uint32_t)s_inactiveFrameBuffer, DEMO_FB_SIZE);
-    #else
-    SCB_CleanInvalidateDCache_by_Addr(inactiveFrameBuffer, DEMO_FB_SIZE);
-    #endif
-
-    lv_color_t * dest_buf = ((lv_color_t *)inactiveFrameBuffer);
-
-    int32_t w = LVGL_BUFFER_WIDTH; //lv_area_get_width(area);
-    int32_t h = LVGL_BUFFER_HEIGHT; //lv_area_get_height(area);
-    lv_color_format_t cf = lv_display_get_color_format(disp_drv);
-    // uint32_t px_size = lv_color_format_get_size(cf);
-    uint32_t w_stride = lv_draw_buf_width_to_stride(w, cf);
-    uint32_t h_stride = lv_draw_buf_width_to_stride(h, cf);
-
-    lv_display_rotation_t rotation = LV_DISPLAY_ROTATION_270;
-
-    uint32_t dest_stride = (rotation == LV_DISPLAY_ROTATION_270 || rotation == LV_DISPLAY_ROTATION_90) ? h_stride : w_stride;
-
-
-    #if LV_USE_GPU_NXP_PXP /* Use PXP to rotate the panel. */
-    // lv_area_t dest_area = {
-    //     .x1 = 0,
-    //     .x2 = DEMO_BUFFER_HEIGHT - 1,
-    //     .y1 = 0,
-    //     .y2 = DEMO_BUFFER_WIDTH - 1,
-    // };
-
-    // const lv_color_t * src_buf = color_p;
-    // const lv_area_t * dest_area = &dest_area;
-    // lv_coord_t dest_stride = DEMO_BUFFER_WIDTH;
-    // const lv_area_t * src_area = area;
-    // int32_t src_width =
-    // int32_t src_height = lv_area_get_height(area);
-    // lv_coord_t src_stride = lv_area_get_width(area);
-    // lv_opa_t opa = LV_OPA_COVER;
-    // // lv_disp_rot_t angle = LV_DISP_ROT_270;
-
-    lv_draw_pxp_rotate(color_p, dest_buf, w, h, w_stride, dest_stride, rotation, cf);
-    // lv_gpu_nxp_pxp_wait();
+    #if LV_USE_ROTATE_PXP /* Use PXP to rotate the panel. */
+    lv_draw_pxp_rotate(color_p, inactiveFrameBuffer,
+                       LVGL_BUFFER_WIDTH, LVGL_BUFFER_HEIGHT,
+                       COMPUTE_STRIDE(LVGL_BUFFER_WIDTH),
+                       COMPUTE_STRIDE(DEMO_BUFFER_WIDTH),
+                       LV_DISPLAY_ROTATION_270, disp->color_format);
 
     #else /* Use CPU to rotate the panel. */
-    lv_draw_sw_rotate(color_p, dest_buf, w, h, w_stride, dest_stride, rotation, cf);
-
-    // for (uint32_t y = 0; y < LVGL_BUFFER_HEIGHT; y++)
-    // {
-    //     for (uint32_t x = 0; x < LVGL_BUFFER_WIDTH; x++)
-    //     {
-    //         ((uint16_t *)inactiveFrameBuffer)[(DEMO_BUFFER_HEIGHT - x) * DEMO_BUFFER_WIDTH + y] =
-    //             ((uint16_t *)color_p)[y * LVGL_BUFFER_WIDTH + x];
-    //     }
-    // }
+    lv_draw_sw_rotate(color_p, inactiveFrameBuffer,
+                      LVGL_BUFFER_WIDTH, LVGL_BUFFER_HEIGHT,
+                      COMPUTE_STRIDE(LVGL_BUFFER_WIDTH),
+                      COMPUTE_STRIDE(DEMO_BUFFER_WIDTH),
+                      LV_DISPLAY_ROTATION_270, disp->color_format);
     #endif
 
-#if __CORTEX_M == 4
-    L1CACHE_CleanInvalidateSystemCacheByRange((uint32_t)s_inactiveFrameBuffer, DEMO_FB_SIZE);
-#else
-    SCB_CleanInvalidateDCache_by_Addr(inactiveFrameBuffer, DEMO_FB_SIZE);
-#endif
+    DEMO_FLUSH_DCACHE();
 
     g_dc.ops->setFrameBuffer(&g_dc, 0, inactiveFrameBuffer);
 
     /* IMPORTANT!!!
      * Inform the graphics library that you are ready with the flushing*/
-    lv_disp_flush_ready(disp_drv);
+    lv_display_flush_ready(disp);
 
     #else /* DEMO_USE_ROTATE */
 
-#if __CORTEX_M == 4
-    L1CACHE_CleanInvalidateSystemCacheByRange((uint32_t)color_p, DEMO_FB_SIZE);
-#else
-    SCB_CleanInvalidateDCache_by_Addr(color_p, DEMO_FB_SIZE);
-#endif
+    DEMO_FLUSH_DCACHE();
 
     g_dc.ops->setFrameBuffer(&g_dc, 0, (void *)color_p);
 
@@ -401,6 +383,7 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
 
     /* IMPORTANT!!!
      * Inform the graphics library that you are ready with the flushing*/
-    lv_disp_flush_ready(disp_drv);
+    lv_display_flush_ready(disp);
     #endif /* DEMO_USE_ROTATE */
 }
+
