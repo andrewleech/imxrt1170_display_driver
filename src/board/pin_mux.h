@@ -25,22 +25,6 @@ extern "C" {
  */
 void BOARD_InitBootPins(void);
 
-/* GPIO_AD_25 (coord M15), LPUART1_RXD/J32[2] */
-/* Routed pin properties */
-#define BOARD_INITLPUARTPINS_LPUART1_RXD_PERIPHERAL                      LPUART1   /*!< Peripheral name */
-#define BOARD_INITLPUARTPINS_LPUART1_RXD_SIGNAL                              RXD   /*!< Signal name */
-
-/* GPIO_AD_24 (coord L13), LPUART1_TXD/J31[2] */
-/* Routed pin properties */
-#define BOARD_INITLPUARTPINS_LPUART1_TXD_PERIPHERAL                      LPUART1   /*!< Peripheral name */
-#define BOARD_INITLPUARTPINS_LPUART1_TXD_SIGNAL                              TXD   /*!< Signal name */
-
-/*!
- * @brief Configures pin routing and optionally pin electrical features.
- *
- */
-void BOARD_InitLpuartPins(void);              /* Function assigned for the Cortex-M7F */
-
 /* GPIO_LPSR_05 (coord N8), I2C5_SCL/J48[27]/U32[17]/U34[4]/J10[20] */
 /* Routed pin properties */
 #define BOARD_INITMIPIPANELPINS_I2C5_SCL_PERIPHERAL                       LPI2C5   /*!< Peripheral name */
@@ -100,90 +84,6 @@ void BOARD_InitLpuartPins(void);              /* Function assigned for the Corte
  *
  */
 void BOARD_InitMipiPanelPins(void);           /* Function assigned for the Cortex-M7F */
-
-/* GPIO_LPSR_08 (coord U8), DMIC_CLK/U41[1]/U44[1]/J50[18] */
-/* Routed pin properties */
-#define BOARD_INITMICPINS_DMIC_CLK_PERIPHERAL                                MIC   /*!< Peripheral name */
-#define BOARD_INITMICPINS_DMIC_CLK_SIGNAL                                    CLK   /*!< Signal name */
-
-/* GPIO_LPSR_09 (coord P5), DMIC_DATA0/U41[5]/J50[20]/LPSPI6_CS0/J26[11] */
-/* Routed pin properties */
-#define BOARD_INITMICPINS_DMIC_DATA0_PERIPHERAL                              MIC   /*!< Peripheral name */
-#define BOARD_INITMICPINS_DMIC_DATA0_SIGNAL                        mic_bitstream   /*!< Signal name */
-#define BOARD_INITMICPINS_DMIC_DATA0_CHANNEL                                  0U   /*!< Signal channel */
-
-/* GPIO_LPSR_10 (coord R5), JTAG_nTRST/J1[3]/LPSPI6_SCK /J26[9]/DMIC_DATA1 */
-/* Routed pin properties */
-#define BOARD_INITMICPINS_DMIC_DATA1_PERIPHERAL                              MIC   /*!< Peripheral name */
-#define BOARD_INITMICPINS_DMIC_DATA1_SIGNAL                        mic_bitstream   /*!< Signal name */
-#define BOARD_INITMICPINS_DMIC_DATA1_CHANNEL                                  1U   /*!< Signal channel */
-
-/*!
- * @brief Configures pin routing and optionally pin electrical features.
- *
- */
-void BOARD_InitMicPins(void);                 /* Function assigned for the Cortex-M7F */
-
-#define BOARD_INITTESTPINS_IOMUXC_GPR_GPR42_GPIO_MUX3_GPIO_SEL_LOW_MASK 0x38U /*!< GPIO3 and CM7_GPIO3 share same IO MUX function, GPIO_MUX3 selects one GPIO function: affected bits mask */
-
-/* GPIO_DISP_B2_11 (coord A6), LPUART2_RXD/BT_UART_RXD/U16[3]/U355[20]/J9[2] */
-/* Routed pin properties */
-#define TEST_GPIO_D0_PERIPHERAL                                            GPIO5   /*!< Peripheral name */
-#define TEST_GPIO_D0_SIGNAL                                          gpio_mux_io   /*!< Signal name */
-#define TEST_GPIO_D0_CHANNEL                                                 12U   /*!< Signal channel */
-
-/* GPIO_DISP_B2_10 (coord D9), LPUART2_TXD/BT_UART_TXD/U354[4]/U16[2]/J25[3]/J9[4] */
-/* Routed pin properties */
-#define TEST_GPIO_D1_PERIPHERAL                                            GPIO5   /*!< Peripheral name */
-#define TEST_GPIO_D1_SIGNAL                                          gpio_mux_io   /*!< Signal name */
-#define TEST_GPIO_D1_CHANNEL                                                 11U   /*!< Signal channel */
-
-/* GPIO_DISP_B2_12 (coord B6), RGMII1_PHY_INTB/U10[31]/BT_UART_CTS/U16[5]/U355[19]/J9[6] */
-/* Routed pin properties */
-#define TEST_GPIO_D2_PERIPHERAL                                            GPIO5   /*!< Peripheral name */
-#define TEST_GPIO_D2_SIGNAL                                          gpio_mux_io   /*!< Signal name */
-#define TEST_GPIO_D2_CHANNEL                                                 13U   /*!< Signal channel */
-
-/* GPIO_AD_04 (coord M13), SIM1_PD/J44[C8]/USER_LED_CTL1/J9[8]/J25[7] */
-/* Routed pin properties */
-#define TEST_GPIO_D3_PERIPHERAL                                            GPIO3   /*!< Peripheral name */
-#define TEST_GPIO_D3_SIGNAL                                          gpio_mux_io   /*!< Signal name */
-#define TEST_GPIO_D3_CHANNEL                                                  3U   /*!< Signal channel */
-
-/* GPIO_AD_06 (coord N13), USB_OTG2_OC/U18[A2]/J9[10]/AUD_INT */
-/* Routed pin properties */
-#define TEST_GPIO_D4_PERIPHERAL                                            GPIO3   /*!< Peripheral name */
-#define TEST_GPIO_D4_SIGNAL                                          gpio_mux_io   /*!< Signal name */
-#define TEST_GPIO_D4_CHANNEL                                                  5U   /*!< Signal channel */
-
-/* GPIO_AD_05 (coord P13), SIM1_PWR_FAIL/J9[12]/J25[5]/LCD_LPTE */
-/* Routed pin properties */
-#define TEST_GPIO_D5_PERIPHERAL                                            GPIO3   /*!< Peripheral name */
-#define TEST_GPIO_D5_SIGNAL                                          gpio_mux_io   /*!< Signal name */
-#define TEST_GPIO_D5_CHANNEL                                                  4U   /*!< Signal channel */
-
-/*!
- * @brief Configures pin routing and optionally pin electrical features.
- *
- */
-void BOARD_InitTestPins(void);                /* Function assigned for the Cortex-M7F */
-
-/* GPIO_AD_26 (coord L14), CSI_PWR_CTL/USER_LED_CTL2/J50[16] */
-/* Routed pin properties */
-#define BOARD_INITLEDPINS_RED_LED_PERIPHERAL                               GPIO9   /*!< Peripheral name */
-#define BOARD_INITLEDPINS_RED_LED_SIGNAL                                 gpio_io   /*!< Signal name */
-#define BOARD_INITLEDPINS_RED_LED_CHANNEL                                    25U   /*!< Signal channel */
-
-/* Symbols to be used with GPIO driver */
-#define BOARD_INITLEDPINS_RED_LED_GPIO                                     GPIO9   /*!< GPIO peripheral base pointer */
-#define BOARD_INITLEDPINS_RED_LED_GPIO_PIN                                   25U   /*!< GPIO pin number */
-#define BOARD_INITLEDPINS_RED_LED_GPIO_PIN_MASK                      (1U << 25U)   /*!< GPIO pin mask */
-
-/*!
- * @brief Configures pin routing and optionally pin electrical features.
- *
- */
-void BOARD_InitLEDPins(void);                 /* Function assigned for the Cortex-M7F */
 
 #if defined(__cplusplus)
 }
