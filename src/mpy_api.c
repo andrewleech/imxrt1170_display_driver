@@ -1,7 +1,10 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "lvgl_support.h"
+#include "fsl_iomuxc.h"
+#include "fsl_lpi2c.h"
 
+// Simple init for backward compatibility
 static mp_obj_t init(void) {
     lv_port_disp_init();
     // Touch initialization handled in Python to avoid conflicts with Python GT911 driver
@@ -9,6 +12,62 @@ static mp_obj_t init(void) {
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(init_obj, init);
+
+// Runtime configuration with panel config dict and optional I2C object
+// TODO Phase 4: Implement runtime panel configuration
+static mp_obj_t init_with_config(mp_obj_t config_dict, mp_obj_t i2c_obj) {
+    // Validate config_dict is a dict
+    if (!mp_obj_is_type(config_dict, &mp_type_dict)) {
+        mp_raise_TypeError(MP_ERROR_TEXT("config must be a dict"));
+    }
+
+    // Extract panel configuration from dict
+    // TODO Phase 4: Parse config dict and pass to display init
+    // For now, just call the default init
+    (void)i2c_obj;  // Unused for now, will be used in Phase 3
+
+    mp_obj_dict_t *dict = MP_OBJ_TO_PTR(config_dict);
+
+    // Example of how to extract values (to be implemented in Phase 4):
+    // mp_obj_t width_obj = mp_obj_dict_get(dict, MP_OBJ_NEW_QSTR(MP_QSTR_width));
+    // int width = mp_obj_get_int(width_obj);
+
+    // For now, just call default init
+    lv_port_disp_init();
+
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(init_with_config_obj, init_with_config);
+
+// Configure I2C pin muxing from Python
+// MicroPython doesn't expose pin muxing APIs for iMXRT, so we provide a helper
+static mp_obj_t configure_i2c_pins(mp_obj_t i2c_num_obj, mp_obj_t scl_pin_obj, mp_obj_t sda_pin_obj) {
+    int i2c_num = mp_obj_get_int(i2c_num_obj);
+    int scl_pin = mp_obj_get_int(scl_pin_obj);
+    int sda_pin = mp_obj_get_int(sda_pin_obj);
+
+    // TODO Phase 3: Implement pin muxing based on i2c_num and pin numbers
+    // For now, only support the known configurations
+    (void)scl_pin;
+    (void)sda_pin;
+
+    switch (i2c_num) {
+        case 1:
+            // LPI2C1 configuration would go here
+            break;
+        case 5:
+            // LPI2C5 - Already configured in BOARD_InitMipiPanelPins()
+            break;
+        case 6:
+            // LPI2C6 configuration would go here
+            break;
+        default:
+            mp_raise_ValueError(MP_ERROR_TEXT("Unsupported I2C bus"));
+    }
+
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_3(configure_i2c_pins_obj, configure_i2c_pins);
 
 static mp_obj_t deinit(void) {
     // lv_port_indev_deinit();
@@ -26,6 +85,8 @@ static MP_DEFINE_CONST_FUN_OBJ_0(deinit_obj, deinit);
 static const mp_rom_map_elem_t imxrt1170_disp_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_imxrt1170_disp) },
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_init_with_config), MP_ROM_PTR(&init_with_config_obj) },
+    { MP_ROM_QSTR(MP_QSTR_configure_i2c_pins), MP_ROM_PTR(&configure_i2c_pins_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&deinit_obj) },
 };
 static MP_DEFINE_CONST_DICT(imxrt1170_disp_globals, imxrt1170_disp_globals_table);
