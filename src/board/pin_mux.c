@@ -54,17 +54,10 @@ BOARD_InitMipiPanelPins:
 - options: {callFromInitBoot: 'false', coreID: cm7, enableClock: 'true'}
 - pin_list:
   - {pin_num: A4, peripheral: GPIO11, signal: 'gpio_io, 16', pin_signal: GPIO_DISP_B2_15, software_input_on: Disable}
-  - {pin_num: N8, peripheral: LPI2C5, signal: SCL, pin_signal: GPIO_LPSR_05, software_input_on: Enable, pull_up_down_config: Pull_Down, pull_keeper_select: Keeper,
-    open_drain: Enable, drive_strength: Normal, slew_rate: Slow}
-  - {pin_num: N7, peripheral: LPI2C5, signal: SDA, pin_signal: GPIO_LPSR_04, software_input_on: Enable, pull_up_down_config: Pull_Down, pull_keeper_select: Keeper,
-    open_drain: Enable, drive_strength: Normal, slew_rate: Slow}
-  - {pin_num: N12, peripheral: GPIO8, signal: 'gpio_io, 31', pin_signal: GPIO_AD_00, software_input_on: Enable, pull_up_down_config: Pull_Down, pull_keeper_select: Keeper,
-    open_drain: Disable, drive_strength: Normal, slew_rate: Slow}
-  - {pin_num: R14, peripheral: GPIO9, signal: 'gpio_io, 00', pin_signal: GPIO_AD_01, pull_up_down_config: Pull_Down, pull_keeper_select: Keeper, open_drain: Disable,
-    drive_strength: Normal, slew_rate: Slow}
   - {pin_num: R13, peripheral: GPIO9, signal: 'gpio_io, 01', pin_signal: GPIO_AD_02}
   - {pin_num: K17, peripheral: GPIO9, signal: 'gpio_io, 29', pin_signal: GPIO_AD_30}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
+ * Note: I2C and touch pins removed - Python handles all I2C initialization
  */
 
 /* FUNCTION ************************************************************************************************************
@@ -75,65 +68,21 @@ BOARD_InitMipiPanelPins:
  * END ****************************************************************************************************************/
 void BOARD_InitMipiPanelPins(void) {
   CLOCK_EnableClock(kCLOCK_Iomuxc);           /* LPCG on: LPCG is ON. */
-  CLOCK_EnableClock(kCLOCK_Iomuxc_Lpsr);      /* LPCG on: LPCG is ON. */
 
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_AD_00_GPIO8_IO31,           /* GPIO_AD_00 is configured as GPIO8_IO31 */
-      1U);                                    /* Software Input On Field: Force input path of pad GPIO_AD_00 */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_AD_01_GPIO9_IO00,           /* GPIO_AD_01 is configured as GPIO9_IO00 */
-      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
+  /* Panel reset pin (LCD_RST_B) */
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_AD_02_GPIO9_IO01,           /* GPIO_AD_02 is configured as GPIO9_IO01 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
+
+  /* Backlight control pin */
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_AD_30_GPIO9_IO29,           /* GPIO_AD_30 is configured as GPIO9_IO29 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
+
+  /* Panel power pin */
   IOMUXC_SetPinMux(
       IOMUXC_GPIO_DISP_B2_15_GPIO11_IO16,     /* GPIO_DISP_B2_15 is configured as GPIO11_IO16 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_LPSR_04_LPI2C5_SDA,         /* GPIO_LPSR_04 is configured as LPI2C5_SDA */
-      1U);                                    /* Software Input On Field: Force input path of pad GPIO_LPSR_04 */
-  IOMUXC_SetPinMux(
-      IOMUXC_GPIO_LPSR_05_LPI2C5_SCL,         /* GPIO_LPSR_05 is configured as LPI2C5_SCL */
-      1U);                                    /* Software Input On Field: Force input path of pad GPIO_LPSR_05 */
-  IOMUXC_SetPinConfig(
-      IOMUXC_GPIO_AD_00_GPIO8_IO31,           /* GPIO_AD_00 PAD functional properties : */
-      0x06U);                                 /* Slew Rate Field: Slow Slew Rate
-                                                 Drive Strength Field: normal
-                                                 Pull / Keep Select Field: Pull Disable, Highz
-                                                 Pull Up / Down Config. Field: Weak pull down
-                                                 Open Drain Field: Disabled
-                                                 Domain write protection: Both cores are allowed
-                                                 Domain write protection lock: Neither of DWP bits is locked */
-  IOMUXC_SetPinConfig(
-      IOMUXC_GPIO_AD_01_GPIO9_IO00,           /* GPIO_AD_01 PAD functional properties : */
-      0x06U);                                 /* Slew Rate Field: Slow Slew Rate
-                                                 Drive Strength Field: normal
-                                                 Pull / Keep Select Field: Pull Disable, Highz
-                                                 Pull Up / Down Config. Field: Weak pull down
-                                                 Open Drain Field: Disabled
-                                                 Domain write protection: Both cores are allowed
-                                                 Domain write protection lock: Neither of DWP bits is locked */
-  IOMUXC_SetPinConfig(
-      IOMUXC_GPIO_LPSR_04_LPI2C5_SDA,         /* GPIO_LPSR_04 PAD functional properties : */
-      0x20U);                                 /* Slew Rate Field: Slow Slew Rate
-                                                 Drive Strength Field: normal
-                                                 Pull / Keep Select Field: Pull Disable, Highz
-                                                 Pull Up / Down Config. Field: Weak pull down
-                                                 Open Drain LPSR Field: Enabled
-                                                 Domain write protection: Both cores are allowed
-                                                 Domain write protection lock: Neither of DWP bits is locked */
-  IOMUXC_SetPinConfig(
-      IOMUXC_GPIO_LPSR_05_LPI2C5_SCL,         /* GPIO_LPSR_05 PAD functional properties : */
-      0x20U);                                 /* Slew Rate Field: Slow Slew Rate
-                                                 Drive Strength Field: normal
-                                                 Pull / Keep Select Field: Pull Disable, Highz
-                                                 Pull Up / Down Config. Field: Weak pull down
-                                                 Open Drain LPSR Field: Enabled
-                                                 Domain write protection: Both cores are allowed
-                                                 Domain write protection lock: Neither of DWP bits is locked */
 }
 
 /***********************************************************************************************************************
