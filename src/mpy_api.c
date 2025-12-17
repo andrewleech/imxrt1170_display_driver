@@ -1,6 +1,7 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "lvgl_support.h"
+#include "display_support.h"
 #include "fsl_iomuxc.h"
 #include "fsl_lpi2c.h"
 
@@ -13,31 +14,68 @@ static mp_obj_t init(void) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(init_obj, init);
 
-// Runtime configuration with panel config dict and optional I2C object
-// TODO Phase 4: Implement runtime panel configuration
-static mp_obj_t init_with_config(mp_obj_t config_dict, mp_obj_t i2c_obj) {
+// Runtime configuration with panel config dict
+// Python does ALL I2C initialization before calling this
+static mp_obj_t init_with_config(mp_obj_t config_dict) {
     // Validate config_dict is a dict
     if (!mp_obj_is_type(config_dict, &mp_type_dict)) {
         mp_raise_TypeError(MP_ERROR_TEXT("config must be a dict"));
     }
 
-    // Extract panel configuration from dict
-    // TODO Phase 4: Parse config dict and pass to display init
-    // For now, just call the default init
-    (void)i2c_obj;  // Unused for now, will be used in Phase 3
+    // Parse panel configuration from Python dict
+    panel_config_t config = {0};
 
     mp_obj_dict_t *dict = MP_OBJ_TO_PTR(config_dict);
+    mp_map_t *map = &dict->map;
 
-    // Example of how to extract values (to be implemented in Phase 4):
-    // mp_obj_t width_obj = mp_obj_dict_get(dict, MP_OBJ_NEW_QSTR(MP_QSTR_width));
-    // int width = mp_obj_get_int(width_obj);
+    // Helper macro to extract dict values
+    #define GET_DICT_INT(key, field) do { \
+        mp_obj_t val = mp_obj_dict_get(dict, MP_OBJ_NEW_QSTR(MP_QSTR_##key)); \
+        if (val != MP_OBJ_NULL) { \
+            config.field = mp_obj_get_int(val); \
+        } \
+    } while(0)
 
-    // For now, just call default init
-    lv_port_disp_init();
+    #define GET_DICT_STR(key, field) do { \
+        mp_obj_t val = mp_obj_dict_get(dict, MP_OBJ_NEW_QSTR(MP_QSTR_##key)); \
+        if (val != MP_OBJ_NULL) { \
+            config.field = mp_obj_str_get_str(val); \
+        } \
+    } while(0)
+
+    // Extract all panel configuration values
+    GET_DICT_STR(name, name);
+    GET_DICT_INT(width, width);
+    GET_DICT_INT(height, height);
+    GET_DICT_INT(hsw, hsw);
+    GET_DICT_INT(hfp, hfp);
+    GET_DICT_INT(hbp, hbp);
+    GET_DICT_INT(vsw, vsw);
+    GET_DICT_INT(vfp, vfp);
+    GET_DICT_INT(vbp, vbp);
+    GET_DICT_INT(dsi_lanes, dsi_lanes);
+
+    #undef GET_DICT_INT
+    #undef GET_DICT_STR
+
+    // Validate required fields
+    if (config.width == 0 || config.height == 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("config must include width and height"));
+    }
+
+    // Validate timing parameters
+    if (config.dsi_lanes == 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("config must include dsi_lanes"));
+    }
+
+    // Initialize display with runtime configuration
+    // Note: Python has already done ALL I2C initialization (Attiny88, PCA6416, etc.)
+    // This only sets up MIPI DSI, LCDIF, and LVGL with the panel timing
+    lv_port_disp_init_with_config(&config);
 
     return mp_const_none;
 }
-static MP_DEFINE_CONST_FUN_OBJ_2(init_with_config_obj, init_with_config);
+static MP_DEFINE_CONST_FUN_OBJ_1(init_with_config_obj, init_with_config);
 
 // Configure I2C pin muxing from Python
 // MicroPython doesn't expose pin muxing APIs for iMXRT, so we provide a helper

@@ -279,6 +279,15 @@ void lv_port_disp_init(void) {
 #endif
 }
 
+void lv_port_disp_init_with_config(const panel_config_t *config) {
+    // Store runtime panel configuration
+    BOARD_InitDisplayWithConfig(config);
+
+    // Initialize display with runtime config
+    // (uses same code path as lv_port_disp_init, but with runtime parameters)
+    lv_port_disp_init();
+}
+
 void lv_port_disp_deinit(void) {
     BOARD_DeinitLcdPanel();
 }

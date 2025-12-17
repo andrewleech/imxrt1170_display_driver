@@ -48,18 +48,19 @@ class BasePanel:
         """
         Initialize the display with this panel configuration.
 
-        1. Calls init_hardware() for panel-specific setup
+        1. Calls init_hardware() for panel-specific setup (Python does ALL I2C)
         2. Gets panel configuration
-        3. Calls C layer to initialize display controller
+        3. Calls C layer to initialize display controller (MIPI DSI, LCDIF, LVGL)
         """
-        # Panel-specific hardware initialization
+        # Panel-specific hardware initialization (ALL I2C done in Python)
         self.init_hardware()
 
         # Get panel configuration
         config = self.get_panel_config()
 
         # Initialize display controller via C module
-        # TODO: Call init_with_config() once implemented in Phase 2
-        imxrt1170_disp.init()
+        # C only handles MIPI DSI, LCDIF, and LVGL setup
+        # Python has already done ALL I2C initialization
+        imxrt1170_disp.init_with_config(config)
 
         return config

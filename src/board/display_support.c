@@ -122,6 +122,20 @@ static status_t BOARD_DSI_Transfer(dsi_transfer_t *xfer);
  * Variables
  ******************************************************************************/
 
+// Runtime panel configuration (NULL = use compile-time DEMO_PANEL)
+static const panel_config_t *g_runtime_panel_config = NULL;
+
+// Helper macros to get panel parameters (runtime or compile-time)
+#define PANEL_WIDTH (g_runtime_panel_config ? g_runtime_panel_config->width : DEMO_PANEL_WIDTH)
+#define PANEL_HEIGHT (g_runtime_panel_config ? g_runtime_panel_config->height : DEMO_PANEL_HEIGHT)
+#define PANEL_HSW (g_runtime_panel_config ? g_runtime_panel_config->hsw : DEMO_HSW)
+#define PANEL_HFP (g_runtime_panel_config ? g_runtime_panel_config->hfp : DEMO_HFP)
+#define PANEL_HBP (g_runtime_panel_config ? g_runtime_panel_config->hbp : DEMO_HBP)
+#define PANEL_VSW (g_runtime_panel_config ? g_runtime_panel_config->vsw : DEMO_VSW)
+#define PANEL_VFP (g_runtime_panel_config ? g_runtime_panel_config->vfp : DEMO_VFP)
+#define PANEL_VBP (g_runtime_panel_config ? g_runtime_panel_config->vbp : DEMO_VBP)
+#define PANEL_DSI_LANES (g_runtime_panel_config ? g_runtime_panel_config->dsi_lanes : DEMO_MIPI_DSI_LANE_NUM)
+
 static uint32_t mipiDsiTxEscClkFreq_Hz;
 static uint32_t mipiDsiDphyBitClkFreq_Hz;
 static uint32_t mipiDsiDphyRefClkFreq_Hz;
@@ -211,7 +225,7 @@ static display_handle_t rm68191Handle = {
 
 static dc_fb_lcdifv2_handle_t s_dcFbLcdifv2Handle = {0};
 
-static const dc_fb_lcdifv2_config_t s_dcFbLcdifv2Config = {
+static dc_fb_lcdifv2_config_t s_dcFbLcdifv2Config = {
     .lcdifv2       = DEMO_LCDIF,
     .width         = DEMO_PANEL_WIDTH,
     .height        = DEMO_PANEL_HEIGHT,
@@ -241,7 +255,7 @@ const dc_fb_t g_dc = {
 
 dc_fb_elcdif_handle_t s_dcFbElcdifHandle = {0}; /* The handle must be initialized to 0. */
 
-const dc_fb_elcdif_config_t s_dcFbElcdifConfig = {
+dc_fb_elcdif_config_t s_dcFbElcdifConfig = {
     .elcdif        = DEMO_LCDIF,
     .width         = DEMO_PANEL_WIDTH,
     .height        = DEMO_PANEL_HEIGHT,
@@ -318,17 +332,40 @@ static void BOARD_InitLcdifClock(void)
      *
      * For 60Hz frame rate, the RK055IQH091 pixel clock should be 36MHz.
      * the RK055AHD091 pixel clock should be 62MHz.
+     * the RPI 7" pixel clock should be 26MHz.
+     *
+     * Clock divider calculation (from PLL_528):
+     * - 720x1280 panels: div=9  (58.7MHz)
+     * - 540x960 panels:  div=15 (35.2MHz)
+     * - 800x480 panels:  div=20 (26.4MHz)
      */
+    uint8_t clock_div;
+
+    if (g_runtime_panel_config) {
+        // Runtime config: calculate divider based on panel resolution
+        uint32_t pixel_count = g_runtime_panel_config->width * g_runtime_panel_config->height;
+        if (pixel_count >= 700000) {
+            clock_div = 9;  // Large panels (720x1280 = 921k pixels)
+        } else if (pixel_count >= 400000) {
+            clock_div = 15; // Medium panels (540x960 = 518k pixels)
+        } else {
+            clock_div = 20; // Small panels (800x480 = 384k pixels)
+        }
+    } else {
+        // Compile-time config: use DEMO_PANEL conditionals
+#if ((DEMO_PANEL == DEMO_PANEL_RK055AHD091) || (DEMO_PANEL_RK055MHD091 == DEMO_PANEL))
+        clock_div = 9;
+#elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
+        clock_div = 20;
+#else
+        clock_div = 15;
+#endif
+    }
+
     const clock_root_config_t lcdifClockConfig = {
         .clockOff = false,
         .mux      = 4, /*!< PLL_528. */
-#if ((DEMO_PANEL == DEMO_PANEL_RK055AHD091) || (DEMO_PANEL_RK055MHD091 == DEMO_PANEL))
-        .div = 9,
-#elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
-        .div = 20,
-#else
-        .div = 15,
-#endif
+        .div      = clock_div,
     };
 
 #if (DEMO_DISPLAY_CONTROLLER == DEMO_DISPLAY_CONTROLLER_LCDIFV2)
@@ -390,15 +427,15 @@ static status_t BOARD_InitLcdPanel(void)
 #endif
 
     const display_config_t displayConfig = {
-        .resolution   = FSL_VIDEO_RESOLUTION(DEMO_PANEL_WIDTH, DEMO_PANEL_HEIGHT),
-        .hsw          = DEMO_HSW,
-        .hfp          = DEMO_HFP,
-        .hbp          = DEMO_HBP,
-        .vsw          = DEMO_VSW,
-        .vfp          = DEMO_VFP,
-        .vbp          = DEMO_VBP,
+        .resolution   = FSL_VIDEO_RESOLUTION(PANEL_WIDTH, PANEL_HEIGHT),
+        .hsw          = PANEL_HSW,
+        .hfp          = PANEL_HFP,
+        .hbp          = PANEL_HBP,
+        .vsw          = PANEL_VSW,
+        .vfp          = PANEL_VFP,
+        .vbp          = PANEL_VBP,
         .controlFlags = 0,
-        .dsiLanes     = DEMO_MIPI_DSI_LANE_NUM,
+        .dsiLanes     = PANEL_DSI_LANES,
     };
 
 #if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
@@ -460,22 +497,21 @@ static void BOARD_SetMipiDsiConfig(void)
     dsi_config_t dsiConfig;
     dsi_dphy_config_t dphyConfig;
 
-    const dsi_dpi_config_t dpiConfig = {.pixelPayloadSize = DEMO_PANEL_WIDTH,
+    // Determine if this is a 1-lane panel (RPI 7") based on runtime config
+    bool is_single_lane = (PANEL_DSI_LANES == 1);
+
+    const dsi_dpi_config_t dpiConfig = {.pixelPayloadSize = PANEL_WIDTH,
                                         .dpiColorCoding   = kDSI_Dpi24Bit,
                                         .pixelPacket      = kDSI_PixelPacket24Bit,
-#if (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
-                                        .videoMode        = kDSI_DpiNonBurstWithSyncPulse,
-#else
-                                        .videoMode        = kDSI_DpiBurst,
-#endif
+                                        .videoMode        = is_single_lane ? kDSI_DpiNonBurstWithSyncPulse : kDSI_DpiBurst,
                                         .bllpMode         = kDSI_DpiBllpLowPower,
                                         .polarityFlags    = kDSI_DpiVsyncActiveLow | kDSI_DpiHsyncActiveLow,
-                                        .hfp              = DEMO_HFP,
-                                        .hbp              = DEMO_HBP,
-                                        .hsw              = DEMO_HSW,
-                                        .vfp              = DEMO_VFP,
-                                        .vbp              = DEMO_VBP,
-                                        .panelHeight      = DEMO_PANEL_HEIGHT,
+                                        .hfp              = PANEL_HFP,
+                                        .hbp              = PANEL_HBP,
+                                        .hsw              = PANEL_HSW,
+                                        .vfp              = PANEL_VFP,
+                                        .vbp              = PANEL_VBP,
+                                        .panelHeight      = PANEL_HEIGHT,
                                         .virtualChannel   = 0};
 
     /*
@@ -488,13 +524,15 @@ static void BOARD_SetMipiDsiConfig(void)
      * dsiConfig.btaTo_ByteClk = 0;
      */
     DSI_GetDefaultConfig(&dsiConfig);
-    dsiConfig.numLanes       = DEMO_MIPI_DSI_LANE_NUM;
-#if (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
-    dsiConfig.autoInsertEoTp = false;
-    dsiConfig.enableNonContinuousHsClk = false;
-#else
-    dsiConfig.autoInsertEoTp = true;
-#endif
+    dsiConfig.numLanes = PANEL_DSI_LANES;
+
+    if (is_single_lane) {
+        // RPI 7" specific settings
+        dsiConfig.autoInsertEoTp = false;
+        dsiConfig.enableNonContinuousHsClk = false;
+    } else {
+        dsiConfig.autoInsertEoTp = true;
+    }
 
     /* Init the DSI module. */
     DSI_Init(DEMO_MIPI_DSI, &dsiConfig);
@@ -511,16 +549,19 @@ static void BOARD_SetMipiDsiConfig(void)
      *
      * Note that the DSI output pixel is 24bit per pixel.
      */
-    mipiDsiDphyBitClkFreq_Hz = mipiDsiDpiClkFreq_Hz * (24 / DEMO_MIPI_DSI_LANE_NUM);
-#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
-    mipiDsiDphyBitClkFreq_Hz = DEMO_MIPI_DPHY_BIT_CLK_ENLARGE(mipiDsiDphyBitClkFreq_Hz);
-#endif
+    mipiDsiDphyBitClkFreq_Hz = mipiDsiDpiClkFreq_Hz * (24 / PANEL_DSI_LANES);
+
+    // Don't enlarge bit clock for single-lane panels (RPI 7")
+    if (!is_single_lane) {
+        mipiDsiDphyBitClkFreq_Hz = DEMO_MIPI_DPHY_BIT_CLK_ENLARGE(mipiDsiDphyBitClkFreq_Hz);
+    }
+
     DSI_GetDphyDefaultConfig(&dphyConfig, mipiDsiDphyBitClkFreq_Hz, mipiDsiTxEscClkFreq_Hz);
 
     mipiDsiDphyBitClkFreq_Hz = DSI_InitDphy(DEMO_MIPI_DSI, &dphyConfig, mipiDsiDphyRefClkFreq_Hz);
 
     /* Init DPI interface. */
-    DSI_SetDpiConfig(DEMO_MIPI_DSI, &dpiConfig, DEMO_MIPI_DSI_LANE_NUM, mipiDsiDpiClkFreq_Hz, mipiDsiDphyBitClkFreq_Hz);
+    DSI_SetDpiConfig(DEMO_MIPI_DSI, &dpiConfig, PANEL_DSI_LANES, mipiDsiDpiClkFreq_Hz, mipiDsiDphyBitClkFreq_Hz);
 }
 
 status_t BOARD_InitDisplayInterface(void)
@@ -572,6 +613,33 @@ void eLCDIF_IRQHandler(void)
     DC_FB_ELCDIF_IRQHandler(&g_dc);
 }
 #endif
+
+void BOARD_InitDisplayWithConfig(const panel_config_t *config)
+{
+    // Store runtime configuration
+    g_runtime_panel_config = config;
+
+    // Update dc_fb config structures with runtime values
+#if (DEMO_DISPLAY_CONTROLLER == DEMO_DISPLAY_CONTROLLER_LCDIFV2)
+    s_dcFbLcdifv2Config.width = config->width;
+    s_dcFbLcdifv2Config.height = config->height;
+    s_dcFbLcdifv2Config.hsw = config->hsw;
+    s_dcFbLcdifv2Config.hfp = config->hfp;
+    s_dcFbLcdifv2Config.hbp = config->hbp;
+    s_dcFbLcdifv2Config.vsw = config->vsw;
+    s_dcFbLcdifv2Config.vfp = config->vfp;
+    s_dcFbLcdifv2Config.vbp = config->vbp;
+#else
+    s_dcFbElcdifConfig.width = config->width;
+    s_dcFbElcdifConfig.height = config->height;
+    s_dcFbElcdifConfig.hsw = config->hsw;
+    s_dcFbElcdifConfig.hfp = config->hfp;
+    s_dcFbElcdifConfig.hbp = config->hbp;
+    s_dcFbElcdifConfig.vsw = config->vsw;
+    s_dcFbElcdifConfig.vfp = config->vfp;
+    s_dcFbElcdifConfig.vbp = config->vbp;
+#endif
+}
 
 status_t BOARD_VerifyDisplayClockSource(void)
 {

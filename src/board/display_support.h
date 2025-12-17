@@ -98,6 +98,38 @@
 extern const dc_fb_t g_dc;
 
 /*******************************************************************************
+ * Runtime Panel Configuration
+ ******************************************************************************/
+
+/**
+ * @brief Runtime panel configuration structure
+ *
+ * Allows panels to be configured at runtime from Python without preprocessor conditionals.
+ * Python passes this config to init_with_config() in mpy_api.c.
+ */
+typedef struct {
+    const char *name;      // Panel identifier (e.g. "rpi_7inch", "rk055ahd091")
+    uint16_t width;        // Horizontal resolution in pixels
+    uint16_t height;       // Vertical resolution in pixels
+    uint8_t hsw;           // Horizontal sync width
+    uint8_t hfp;           // Horizontal front porch
+    uint8_t hbp;           // Horizontal back porch
+    uint8_t vsw;           // Vertical sync width
+    uint8_t vfp;           // Vertical front porch
+    uint8_t vbp;           // Vertical back porch
+    uint8_t dsi_lanes;     // Number of DSI lanes (1 or 2)
+} panel_config_t;
+
+/**
+ * @brief Initialize display with runtime panel configuration
+ *
+ * Alternative to compile-time DEMO_PANEL configuration.
+ *
+ * @param config Panel configuration from Python
+ */
+void BOARD_InitDisplayWithConfig(const panel_config_t *config);
+
+/*******************************************************************************
  * API
  ******************************************************************************/
 #if defined(__cplusplus)
