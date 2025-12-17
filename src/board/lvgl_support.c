@@ -73,9 +73,8 @@
 
 // Helper function to get frame buffer size (runtime or compile-time)
 static inline size_t get_fb_size(void) {
-    // Note: This function uses runtime config if available, but could be refactored later
-    // to properly handle all runtime sizing needs. For now, it returns compile-time size
-    // which works because we use DYNAMIC_FB_ALLOC and allocate based on DEMO_PANEL.
+    // Returns compile-time frame buffer size based on DEMO_BUFFER_WIDTH/HEIGHT.
+    // We use DYNAMIC_FB_ALLOC to allocate buffers at runtime.
     // TODO: In future, calculate stride from runtime panel width/height if available
     return DEMO_FB_SIZE_STATIC;
 }

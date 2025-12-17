@@ -5,15 +5,6 @@
 #include "fsl_iomuxc.h"
 #include "fsl_lpi2c.h"
 
-// Simple init for backward compatibility
-static mp_obj_t init(void) {
-    lv_port_disp_init();
-    // Touch initialization handled in Python to avoid conflicts with Python GT911 driver
-    // lv_port_indev_init();
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_0(init_obj, init);
-
 // Runtime configuration with panel config dict
 // Python does ALL I2C initialization before calling this
 static mp_obj_t init_with_config(mp_obj_t config_dict) {
@@ -122,7 +113,6 @@ static MP_DEFINE_CONST_FUN_OBJ_0(deinit_obj, deinit);
 // optimized to word-sized integers by the build system (interned strings).
 static const mp_rom_map_elem_t imxrt1170_disp_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_imxrt1170_disp) },
-    { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&init_obj) },
     { MP_ROM_QSTR(MP_QSTR_init_with_config), MP_ROM_PTR(&init_with_config_obj) },
     { MP_ROM_QSTR(MP_QSTR_configure_i2c_pins), MP_ROM_PTR(&configure_i2c_pins_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&deinit_obj) },

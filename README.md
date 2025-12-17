@@ -359,23 +359,6 @@ Add to your `manifest.py`:
 require("imxrt1170_display_driver")
 ```
 
-## Backward Compatibility
-
-The old C-only API (`imxrt1170_disp.init()`) still works for backward compatibility when `DEMO_PANEL` is defined at compile time. However, the Python API is recommended for new projects.
-
-Old style (deprecated):
-```python
-import imxrt1170_disp
-imxrt1170_disp.init()  # Uses compile-time DEMO_PANEL
-```
-
-New style (recommended):
-```python
-from imxrt1170_display.panels import RK055MHD091Display
-display = RK055MHD091Display()
-display.init()
-```
-
 ## Attribution
 
 Display drivers based on NXP source code:

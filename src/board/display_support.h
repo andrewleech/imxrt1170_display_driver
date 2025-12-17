@@ -21,17 +21,8 @@
 
 /* @TEST_ANCHOR */
 
-#define DEMO_PANEL_RK055AHD091 0 /* 720 * 1280, RK055AHD091-CTG(RK055HDMIPI4M) */
-#define DEMO_PANEL_RK055IQH091 1 /* 540 * 960,  RK055IQH091-CTG */
-#define DEMO_PANEL_RK055MHD091 2 /* 720 * 1280, RK055MHD091A0-CTG(RK055HDMIPI4MA0) */
-#define DEMO_PANEL_RASPI_7INCH 3 /* 800 * 480, Raspberry Pi 7" */
-
 #define DEMO_DISPLAY_CONTROLLER_ELCDIF  0
 #define DEMO_DISPLAY_CONTROLLER_LCDIFV2 1
-
-#ifndef DEMO_PANEL
-#define DEMO_PANEL DEMO_PANEL_RK055MHD091
-#endif
 
 #ifndef DEMO_DISPLAY_CONTROLLER
 /* Use LCDIFV2 by default, could use ELCDIF by changing this macro. */
@@ -64,25 +55,13 @@
 #define DEMO_BUFFER_BYTE_PER_PIXEL 2
 #endif
 
-#if ((DEMO_PANEL_RK055AHD091 == DEMO_PANEL) || (DEMO_PANEL_RK055MHD091 == DEMO_PANEL))
-
-#define DEMO_PANEL_WIDTH  (720)
-#define DEMO_PANEL_HEIGHT (1280)
-
-#elif (DEMO_PANEL_RK055IQH091 == DEMO_PANEL)
-
-#define DEMO_PANEL_WIDTH  (540)
-#define DEMO_PANEL_HEIGHT (960)
-
-#elif (DEMO_PANEL_RASPI_7INCH == DEMO_PANEL)
-
-#define DEMO_PANEL_WIDTH  (800)
-#define DEMO_PANEL_HEIGHT (480)
-
-#endif
-
-#define DEMO_BUFFER_WIDTH  DEMO_PANEL_WIDTH
-#define DEMO_BUFFER_HEIGHT DEMO_PANEL_HEIGHT
+/*
+ * Frame buffer size for compile-time allocation.
+ * Set to maximum supported panel size (720x1280) to accommodate all panels.
+ * Actual panel size configured at runtime via panel_config_t.
+ */
+#define DEMO_BUFFER_WIDTH  (720)
+#define DEMO_BUFFER_HEIGHT (1280)
 
 /* Where the frame buffer is shown in the screen. */
 #define DEMO_BUFFER_START_X 0U
@@ -123,7 +102,8 @@ typedef struct {
 /**
  * @brief Initialize display with runtime panel configuration
  *
- * Alternative to compile-time DEMO_PANEL configuration.
+ * Required for display initialization. Panels are configured at runtime
+ * from Python with timing and resolution parameters.
  *
  * @param config Panel configuration from Python
  */
