@@ -21,6 +21,7 @@ MCU_DIR = $(NXP_SDK)/devices/$(MCU_SERIES)
 
 # Add all C files to SRC_USERMOD.
 SRC_USERMOD += $(SRC_DIR)/mpy_api.c
+SRC_USERMOD += $(SRC_DIR)/mpy_i2c_bridge.c
 
 SRC_USERMOD += $(addprefix $(SRC_DIR)/,\
 	board/board.c \
