@@ -40,7 +40,7 @@ status_t RPI_Init(display_handle_t *handle, const display_config_t *config)
     {
         return kStatus_InvalidArgument;
     }
-    talk_to_raspi();
+    // talk_to_raspi();
     // from tc358762_dsi_init
 
     //	rpi_touchscreen_write(dsi, DSI_LANEENABLE,

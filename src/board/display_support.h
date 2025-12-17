@@ -13,6 +13,8 @@
 #include "py/mphal.h"
 #include "py/mpconfig.h"
 
+#include "display_board_config.h"
+
 #define PRINTF(...)   mp_printf(&mp_plat_print, "lvgl: " __VA_ARGS__)
 
 /*******************************************************************************
@@ -30,6 +32,7 @@
 #define DEMO_DISPLAY_CONTROLLER_LCDIFV2 1
 
 #ifndef DEMO_PANEL
+#error here
 #define DEMO_PANEL DEMO_PANEL_RK055MHD091
 #endif
 

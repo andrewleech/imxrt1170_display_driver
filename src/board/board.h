@@ -246,31 +246,7 @@ status_t BOARD_LPI2C_ReceiveSCCB(LPI2C_Type *base,
                                  uint8_t subaddressSize,
                                  uint8_t *rxBuff,
                                  uint8_t rxBuffSize);
-void BOARD_Accel_I2C_Init(void);
-status_t BOARD_Accel_I2C_Send(uint8_t deviceAddress, uint32_t subAddress, uint8_t subaddressSize, uint32_t txBuff);
-status_t BOARD_Accel_I2C_Receive(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subaddressSize, uint8_t *rxBuff, uint8_t rxBuffSize);
-void BOARD_Codec_I2C_Init(void);
-status_t BOARD_Codec_I2C_Send(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, const uint8_t *txBuff, uint8_t txBuffSize);
-status_t BOARD_Codec_I2C_Receive(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, uint8_t *rxBuff, uint8_t rxBuffSize);
-void BOARD_Camera_I2C_Init(void);
-status_t BOARD_Camera_I2C_Send(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, const uint8_t *txBuff, uint8_t txBuffSize);
-status_t BOARD_Camera_I2C_Receive(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, uint8_t *rxBuff, uint8_t rxBuffSize);
 
-status_t BOARD_Camera_I2C_SendSCCB(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, const uint8_t *txBuff, uint8_t txBuffSize);
-status_t BOARD_Camera_I2C_ReceiveSCCB(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, uint8_t *rxBuff, uint8_t rxBuffSize);
-
-void BOARD_MIPIPanelTouch_I2C_Init(void);
-status_t BOARD_MIPIPanelTouch_I2C_Send(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, const uint8_t *txBuff, uint8_t txBuffSize);
-status_t BOARD_MIPIPanelTouch_I2C_Receive(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, uint8_t *rxBuff, uint8_t rxBuffSize);
 #endif /* SDK_I2C_BASED_COMPONENT_USED */
 
 void BOARD_SD_Pin_Config(uint32_t speed, uint32_t strength);

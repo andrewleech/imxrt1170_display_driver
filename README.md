@@ -25,7 +25,7 @@ The driver includes support for the Raspberry Pi 7" display, including:
 
 ## Board-Specific Pin Configuration
 
-The display driver pin definitions in `board.h` can be overridden for custom hardware by creating a `display_board_config.h` file in your board directory that defines the pins before including the display driver headers. See `board.h` for the list of overrideable definitions.
+The display configuration / driver pin definitions in `display_support.h` and `board.h` can be overridden for custom hardware by creating a `display_board_config.h` file in your board directory that defines the pins before including the display driver headers. See `board.h` for the list of overrideable definitions.
 
 The display drivers themselves are based directly on the source provide by NXP in:
 https://github.com/nxp-appcodehub/dm-rt1170evkb-full-appliance/tree/60dc3d517f8a67034b8569fca6dc6c5094e0841a

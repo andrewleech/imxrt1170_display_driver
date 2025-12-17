@@ -2,10 +2,12 @@
 #include "py/mphal.h"
 #include "lvgl_support.h"
 
+#if !MICROPY_MODULE_BUILTIN_INIT
+#error MICROPY_MODULE_BUILTIN_INIT required to be set in build.
+#endif
+
 static mp_obj_t init(void) {
     lv_port_disp_init();
-    // Touch initialization handled in Python to avoid conflicts with Python GT911 driver
-    // lv_port_indev_init();
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(init_obj, init);

@@ -67,7 +67,7 @@ INC += -I$(LVGL_DIR)
 INC += -I$(LVGL_DIR)/src
 
 # Board-specific configuration override support
-# The board can provide display_board_config.h to override pin definitions
+# The board must provide "display_board_config.h" to configure screen, pin definitions, etc.
 INC += -I$(BOARD_DIR)
 
 CFLAGS_USERMOD += $(INC) -D_FSL_COMMON_ARM_H_=FSL_COMMON_ARM_H_ -D_FSL_COMMON_H_=FSL_COMMON_H_
