@@ -28,18 +28,18 @@ static mp_obj_t init_with_config(mp_obj_t config_dict) {
     mp_obj_dict_t *dict = MP_OBJ_TO_PTR(config_dict);
     mp_map_t *map = &dict->map;
 
-    // Helper macro to extract dict values
+    // Helper macro to extract dict values (using safe map lookup)
     #define GET_DICT_INT(key, field) do { \
-        mp_obj_t val = mp_obj_dict_get(dict, MP_OBJ_NEW_QSTR(MP_QSTR_##key)); \
-        if (val != MP_OBJ_NULL) { \
-            config.field = mp_obj_get_int(val); \
+        mp_map_elem_t *elem = mp_map_lookup(map, MP_OBJ_NEW_QSTR(MP_QSTR_##key), MP_MAP_LOOKUP); \
+        if (elem != NULL) { \
+            config.field = mp_obj_get_int(elem->value); \
         } \
     } while(0)
 
     #define GET_DICT_STR(key, field) do { \
-        mp_obj_t val = mp_obj_dict_get(dict, MP_OBJ_NEW_QSTR(MP_QSTR_##key)); \
-        if (val != MP_OBJ_NULL) { \
-            config.field = mp_obj_str_get_str(val); \
+        mp_map_elem_t *elem = mp_map_lookup(map, MP_OBJ_NEW_QSTR(MP_QSTR_##key), MP_MAP_LOOKUP); \
+        if (elem != NULL) { \
+            config.field = mp_obj_str_get_str(elem->value); \
         } \
     } while(0)
 

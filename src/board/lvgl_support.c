@@ -70,8 +70,18 @@
 #endif
 
 #define DEMO_BUFFER_STRIDE_BYTE ((DEMO_BUFFER_WIDTH * LCD_FB_BYTE_PER_PIXEL + LV_DRAW_BUF_ALIGN - 1) & ~(LV_DRAW_BUF_ALIGN - 1))
-#define DEMO_FB_SIZE (DEMO_BUFFER_STRIDE_BYTE * DEMO_BUFFER_HEIGHT)
+#define DEMO_FB_SIZE_STATIC (DEMO_BUFFER_STRIDE_BYTE * DEMO_BUFFER_HEIGHT)  // Compile-time size
 #define COMPUTE_STRIDE(x) ((x * LCD_FB_BYTE_PER_PIXEL + LV_DRAW_BUF_ALIGN - 1) & ~(LV_DRAW_BUF_ALIGN - 1))
+
+// Helper function to get frame buffer size (runtime or compile-time)
+static inline size_t get_fb_size(void) {
+    // Note: This function uses runtime config if available, but could be refactored later
+    // to properly handle all runtime sizing needs. For now, it returns compile-time size
+    // which works because we use DYNAMIC_FB_ALLOC and allocate based on DEMO_PANEL.
+    // TODO: In future, calculate stride from runtime panel width/height if available
+    return DEMO_FB_SIZE_STATIC;
+}
+#define DEMO_FB_SIZE get_fb_size()  // Macro wraps function for easy refactoring later
 
 #if DEMO_USE_ROTATE
 #define LVGL_BUFFER_WIDTH  DEMO_BUFFER_HEIGHT

@@ -21,11 +21,23 @@
 #define RPI_I2C_BASEADDR  LPI2C1
 
 /*******************************************************************************
+ * Variables
+ ******************************************************************************/
+
+// External reference to runtime panel config (from display_support.c)
+extern const void *g_runtime_panel_config;
+
+/*******************************************************************************
  * Code
  ******************************************************************************/
 
 void talk_to_raspi(void)
 {
+    // Skip I2C operations when using runtime config (Python already initialized Attiny88)
+    if (g_runtime_panel_config != NULL) {
+        return;
+    }
+
     uint8_t tmp;
     uint8_t brightness = 0x80;
 

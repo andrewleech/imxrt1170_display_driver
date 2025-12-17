@@ -8,17 +8,14 @@
 #include "display_support.h"
 #include "fsl_gpio.h"
 #include "fsl_mipi_dsi.h"
-#if (DEMO_PANEL_RK055AHD091 == DEMO_PANEL)
+#include <string.h>
+// Include all panel drivers for runtime selection
 #include "fsl_rm68200.h"
-#elif (DEMO_PANEL_RK055IQH091 == DEMO_PANEL)
 #include "fsl_rm68191.h"
-#elif (DEMO_PANEL_RK055MHD091 == DEMO_PANEL)
 #include "fsl_hx8394.h"
-#elif (DEMO_PANEL_RASPI_7INCH == DEMO_PANEL)
 #include "rpi.h"
 #include "pca6416.h"
 #include "pca9530.h"
-#endif
 #include "pin_mux.h"
 #include "board.h"
 
@@ -148,13 +145,13 @@ const MIPI_DSI_Type g_mipiDsi = {
     .dphy = DSI_HOST_DPHY_INTFC,
 };
 
-#if (DEMO_PANEL == DEMO_PANEL_RK055AHD091)
-
+// All panel handles compiled in for runtime selection
 static mipi_dsi_device_t dsiDevice = {
     .virtualChannel = 0,
     .xferFunc       = BOARD_DSI_Transfer,
 };
 
+// RK055AHD091 (720x1280, RM68200)
 static const rm68200_resource_t rm68200Resource = {
     .dsiDevice    = &dsiDevice,
     .pullResetPin = BOARD_PullPanelResetPin,
@@ -166,13 +163,7 @@ static display_handle_t rm68200Handle = {
     .ops      = &rm68200_ops,
 };
 
-#elif (DEMO_PANEL == DEMO_PANEL_RK055MHD091)
-
-static mipi_dsi_device_t dsiDevice = {
-    .virtualChannel = 0,
-    .xferFunc       = BOARD_DSI_Transfer,
-};
-
+// RK055MHD091 (720x1280, HX8394)
 static const hx8394_resource_t hx8394Resource = {
     .dsiDevice    = &dsiDevice,
     .pullResetPin = BOARD_PullPanelResetPin,
@@ -184,13 +175,7 @@ static display_handle_t hx8394Handle = {
     .ops      = &hx8394_ops,
 };
 
-#elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
-
-static mipi_dsi_device_t dsiDevice = {
-    .virtualChannel = 0,
-    .xferFunc       = BOARD_DSI_Transfer,
-};
-
+// RPI 7" (800x480)
 static const rpi_resource_t rpiResource = {
     .dsiDevice    = &dsiDevice,
     .pullResetPin = BOARD_PullPanelResetPin,
@@ -201,13 +186,8 @@ static display_handle_t rpiHandle = {
     .resource = &rpiResource,
     .ops      = &rpi_ops,
 };
-#else
 
-static mipi_dsi_device_t dsiDevice = {
-    .virtualChannel = 0,
-    .xferFunc       = BOARD_DSI_Transfer,
-};
-
+// RK055IQH091 (540x960, RM68191)
 static const rm68191_resource_t rm68191Resource = {
     .dsiDevice    = &dsiDevice,
     .pullResetPin = BOARD_PullPanelResetPin,
@@ -218,8 +198,6 @@ static display_handle_t rm68191Handle = {
     .resource = &rm68191Resource,
     .ops      = &rm68191_ops,
 };
-
-#endif
 
 #if (DEMO_DISPLAY_CONTROLLER == DEMO_DISPLAY_CONTROLLER_LCDIFV2)
 
@@ -282,6 +260,12 @@ const dc_fb_t g_dc = {
 
 static void BOARD_PullPanelResetPin(bool pullUp)
 {
+    // Skip I2C operations for RPI panel when using runtime config (Python already did it)
+    if (g_runtime_panel_config != NULL && PANEL_DSI_LANES == 1) {
+        // Runtime config with single-lane panel (RPI) - Python handles all I2C
+        return;
+    }
+
     if (pullUp)
     {
 #if (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
@@ -302,6 +286,12 @@ static void BOARD_PullPanelResetPin(bool pullUp)
 
 static void BOARD_PullPanelPowerPin(bool pullUp)
 {
+    // Skip I2C operations for RPI panel when using runtime config (Python already did it)
+    if (g_runtime_panel_config != NULL && PANEL_DSI_LANES == 1) {
+        // Runtime config with single-lane panel (RPI) - Python handles all I2C
+        return;
+    }
+
     if (pullUp)
     {
 #if (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
@@ -421,11 +411,6 @@ static void BOARD_InitMipiDsiClock(void)
 static status_t BOARD_InitLcdPanel(void)
 {
     status_t status;
-
-#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
-    const gpio_pin_config_t pinConfig = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
-#endif
-
     const display_config_t displayConfig = {
         .resolution   = FSL_VIDEO_RESOLUTION(PANEL_WIDTH, PANEL_HEIGHT),
         .hsw          = PANEL_HSW,
@@ -438,31 +423,73 @@ static status_t BOARD_InitLcdPanel(void)
         .dsiLanes     = PANEL_DSI_LANES,
     };
 
+    // Runtime panel selection based on config->name
+    if (g_runtime_panel_config != NULL && g_runtime_panel_config->name != NULL) {
+        const char *panel_name = g_runtime_panel_config->name;
+
+        if (strcmp(panel_name, "rpi_7inch") == 0) {
+            status = RPI_Init(&rpiHandle, &displayConfig);
+        } else if (strcmp(panel_name, "rk055ahd091") == 0) {
+            // Init GPIO pins for non-RPI panels
+            const gpio_pin_config_t pinConfig = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
+            GPIO_PinInit(BOARD_MIPI_PANEL_POWER_GPIO, BOARD_MIPI_PANEL_POWER_PIN, &pinConfig);
+            GPIO_PinInit(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, &pinConfig);
+            GPIO_PinInit(BOARD_MIPI_PANEL_RST_GPIO, BOARD_MIPI_PANEL_RST_PIN, &pinConfig);
+
+            status = RM68200_Init(&rm68200Handle, &displayConfig);
+
+            if (status == kStatus_Success) {
+                GPIO_PinWrite(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, 1);
+            }
+        } else if (strcmp(panel_name, "rk055mhd091") == 0) {
+            const gpio_pin_config_t pinConfig = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
+            GPIO_PinInit(BOARD_MIPI_PANEL_POWER_GPIO, BOARD_MIPI_PANEL_POWER_PIN, &pinConfig);
+            GPIO_PinInit(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, &pinConfig);
+            GPIO_PinInit(BOARD_MIPI_PANEL_RST_GPIO, BOARD_MIPI_PANEL_RST_PIN, &pinConfig);
+
+            status = HX8394_Init(&hx8394Handle, &displayConfig);
+
+            if (status == kStatus_Success) {
+                GPIO_PinWrite(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, 1);
+            }
+        } else if (strcmp(panel_name, "rk055iqh091") == 0) {
+            const gpio_pin_config_t pinConfig = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
+            GPIO_PinInit(BOARD_MIPI_PANEL_POWER_GPIO, BOARD_MIPI_PANEL_POWER_PIN, &pinConfig);
+            GPIO_PinInit(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, &pinConfig);
+            GPIO_PinInit(BOARD_MIPI_PANEL_RST_GPIO, BOARD_MIPI_PANEL_RST_PIN, &pinConfig);
+
+            status = RM68191_Init(&rm68191Handle, &displayConfig);
+
+            if (status == kStatus_Success) {
+                GPIO_PinWrite(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, 1);
+            }
+        } else {
+            // Unknown panel name
+            return kStatus_InvalidArgument;
+        }
+    } else {
+        // Compile-time panel selection (backward compatibility)
 #if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
-    GPIO_PinInit(BOARD_MIPI_PANEL_POWER_GPIO, BOARD_MIPI_PANEL_POWER_PIN, &pinConfig);
-    GPIO_PinInit(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, &pinConfig);
-    GPIO_PinInit(BOARD_MIPI_PANEL_RST_GPIO, BOARD_MIPI_PANEL_RST_PIN, &pinConfig);
+        const gpio_pin_config_t pinConfig = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
+        GPIO_PinInit(BOARD_MIPI_PANEL_POWER_GPIO, BOARD_MIPI_PANEL_POWER_PIN, &pinConfig);
+        GPIO_PinInit(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, &pinConfig);
+        GPIO_PinInit(BOARD_MIPI_PANEL_RST_GPIO, BOARD_MIPI_PANEL_RST_PIN, &pinConfig);
 #endif
 
 #if (DEMO_PANEL == DEMO_PANEL_RK055AHD091)
-    status = RM68200_Init(&rm68200Handle, &displayConfig);
-
+        status = RM68200_Init(&rm68200Handle, &displayConfig);
 #elif (DEMO_PANEL_RK055MHD091 == DEMO_PANEL)
-
-    status = HX8394_Init(&hx8394Handle, &displayConfig);
-
+        status = HX8394_Init(&hx8394Handle, &displayConfig);
 #elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
-
-    status = RPI_Init(&rpiHandle, &displayConfig);
+        status = RPI_Init(&rpiHandle, &displayConfig);
 #else
-
-    status = RM68191_Init(&rm68191Handle, &displayConfig);
+        status = RM68191_Init(&rm68191Handle, &displayConfig);
 #endif
 
-    if (status == kStatus_Success)
-    {
 #if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
-        GPIO_PinWrite(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, 1);
+        if (status == kStatus_Success) {
+            GPIO_PinWrite(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, 1);
+        }
 #endif
     }
 

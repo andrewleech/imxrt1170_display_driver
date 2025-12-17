@@ -19,7 +19,7 @@ class RPI7InchDisplay(BasePanel):
 
     # I2C addresses
     ATTINY88_ADDR = 0x45
-    PCA6416_ADDR = 0x20
+    PCA6416_ADDR_DEFAULT = 0x21  # Default matches C driver (was 0x20 in earlier versions)
 
     # Attiny88 registers
     REG_ID = 0x80
@@ -31,16 +31,18 @@ class RPI7InchDisplay(BasePanel):
     PCA_CONFIG = 0x06
     PCA_OUTPUT = 0x02
 
-    def __init__(self, display_i2c=None, gpio_i2c=None):
+    def __init__(self, display_i2c=None, gpio_i2c=None, pca6416_addr=None):
         """
         Initialize RPI 7" display panel.
 
         Args:
             display_i2c: I2C bus for Attiny88 display controller (default: I2C(1))
             gpio_i2c: I2C bus for PCA6416 GPIO expander (default: I2C(6))
+            pca6416_addr: PCA6416 I2C address (default: 0x21, some boards use 0x20)
         """
         self.display_i2c = display_i2c
         self.gpio_i2c = gpio_i2c
+        self.pca6416_addr = pca6416_addr if pca6416_addr is not None else self.PCA6416_ADDR_DEFAULT
 
     def get_panel_config(self):
         """Return RPI 7" panel timing configuration"""
@@ -85,12 +87,12 @@ class RPI7InchDisplay(BasePanel):
         """Initialize PCA6416 GPIO expander"""
         try:
             # Configure all pins as outputs
-            self.gpio_i2c.writeto_mem(self.PCA6416_ADDR, self.PCA_CONFIG, bytes([0x00]))
+            self.gpio_i2c.writeto_mem(self.pca6416_addr, self.PCA_CONFIG, bytes([0x00]))
 
             # Set initial output state (all low)
-            self.gpio_i2c.writeto_mem(self.PCA6416_ADDR, self.PCA_OUTPUT, bytes([0x00]))
+            self.gpio_i2c.writeto_mem(self.pca6416_addr, self.PCA_OUTPUT, bytes([0x00]))
         except OSError as e:
-            print(f"Warning: PCA6416 initialization failed: {e}")
+            print(f"Warning: PCA6416 initialization failed (addr=0x{self.pca6416_addr:02x}): {e}")
 
     def _init_attiny(self):
         """
