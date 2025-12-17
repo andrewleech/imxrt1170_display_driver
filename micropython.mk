@@ -27,7 +27,6 @@ SRC_USERMOD += $(addprefix $(SRC_DIR)/,\
 	board/display_support.c \
 	board/lvgl_support.c \
 	board/pin_mux.c \
-	touchpanel/fsl_gt911.c \
 	video/fsl_dc_fb_elcdif.c \
 	video/fsl_dc_fb_lcdifv2.c \
 	video/fsl_hx8394.c \
@@ -55,7 +54,6 @@ INC += -I$(MCU_DIR)
 INC += -I$(MCU_DIR)/drivers
 #INC += -I$(NXP_SDK)/drivers/common
 INC += -I$(SRC_DIR)/board
-INC += -I$(SRC_DIR)/touchpanel
 INC += -I$(SRC_DIR)/video
 INC += -I$(NXP_SDK)/drivers/elcdif
 INC += -I$(NXP_SDK)/drivers/lcdifv2

@@ -221,33 +221,6 @@ status_t BOARD_Camera_I2C_ReceiveSCCB(
                                    rxBuffSize);
 }
 
-void BOARD_MIPIPanelTouch_I2C_Init(void)
-{
-    const clock_root_config_t lpi2cClockConfig = {
-        .clockOff = false,
-        .mux      = BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_SOURCE,
-        .div      = BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_DIVIDER,
-    };
-
-    CLOCK_SetRootClock(BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_ROOT, &lpi2cClockConfig);
-
-    BOARD_LPI2C_Init(BOARD_MIPI_PANEL_TOUCH_I2C_BASEADDR,
-                     CLOCK_GetRootClockFreq(BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_ROOT));
-}
-
-status_t BOARD_MIPIPanelTouch_I2C_Send(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, const uint8_t *txBuff, uint8_t txBuffSize)
-{
-    return BOARD_LPI2C_Send(BOARD_MIPI_PANEL_TOUCH_I2C_BASEADDR, deviceAddress, subAddress, subAddressSize,
-                            (uint8_t *)txBuff, txBuffSize);
-}
-
-status_t BOARD_MIPIPanelTouch_I2C_Receive(
-    uint8_t deviceAddress, uint32_t subAddress, uint8_t subAddressSize, uint8_t *rxBuff, uint8_t rxBuffSize)
-{
-    return BOARD_LPI2C_Receive(BOARD_MIPI_PANEL_TOUCH_I2C_BASEADDR, deviceAddress, subAddress, subAddressSize, rxBuff,
-                               rxBuffSize);
-}
 #endif /* SDK_I2C_BASED_COMPONENT_USED */
 
 /* MPU configuration. */

@@ -39,7 +39,6 @@ void lv_port_pre_init(void);
 void lv_port_disp_init(void);
 void lv_port_disp_init_with_config(const panel_config_t *config);
 void lv_port_disp_deinit(void);
-void lv_port_indev_init(void);
 
 #if (LV_USE_DRAW_VGLITE || LV_USE_DRAW_VG_LITE || LV_USE_DRAW_PXP)
 void DEMO_CleanInvalidateCache(void);

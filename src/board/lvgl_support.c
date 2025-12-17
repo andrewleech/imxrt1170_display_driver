@@ -17,8 +17,6 @@
 #include "fsl_gpio.h"
 #include "fsl_cache.h"
 
-#include "fsl_gt911.h"
-
 #if LV_USE_DRAW_VG_LITE
 #include "vg_lite.h"
 #include "vglite_support.h"
@@ -107,15 +105,7 @@ void DEMO_CleanInvalidateCache(void);
 void DEMO_CleanInvalidateCacheByAddr(void *addr, int32_t dsize);
 #endif
 
-static void DEMO_InitTouch(void);
-
-static void DEMO_ReadTouch(lv_indev_t * indev_drv, lv_indev_data_t * data);
-
 static void DEMO_BufferSwitchOffCallback(void *param, void *switchOffBuffer);
-
-static void BOARD_PullMIPIPanelTouchResetPin(bool pullUp);
-
-static void BOARD_ConfigMIPIPanelTouchIntPin(gt911_int_pin_mode_t mode);
 
 static void DEMO_WaitBufferSwitchOff(void);
 
@@ -154,20 +144,6 @@ static volatile bool s_transferDone;
  */
 static void *volatile s_inactiveFrameBuffer;
 #endif
-
-static gt911_handle_t s_touchHandle;
-static const gt911_config_t s_touchConfig = {
-    .I2C_SendFunc     = BOARD_MIPIPanelTouch_I2C_Send,
-    .I2C_ReceiveFunc  = BOARD_MIPIPanelTouch_I2C_Receive,
-    .pullResetPinFunc = BOARD_PullMIPIPanelTouchResetPin,
-    .intPinFunc       = BOARD_ConfigMIPIPanelTouchIntPin,
-    .timeDelayMsFunc  = VIDEO_DelayMs,
-    .touchPointNum    = 1,
-    .i2cAddrMode      = kGT911_I2cAddrMode0,
-    .intTrigMode      = kGT911_IntRisingEdge,
-};
-static int s_touchResolutionX;
-static int s_touchResolutionY;
 
 /*******************************************************************************
  * Code
@@ -406,108 +382,3 @@ void DEMO_FlushDisplay(lv_display_t * disp, const lv_area_t * area, uint8_t * co
     #endif /* DEMO_USE_ROTATE */
 }
 
-void lv_port_indev_init(void) {
-	BOARD_MIPIPanelTouch_I2C_Init();
-    // static lv_indev_drv_t indev_drv;
-
-    /*------------------
-     * Touchpad
-     * -----------------*/
-
-    /*Initialize your touchpad */
-    DEMO_InitTouch();
-
-    /*Register a touchpad input device*/
-    lv_indev_t * indev = lv_indev_create();
-    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
-    lv_indev_set_read_cb(indev, DEMO_ReadTouch);
-}
-
-static void BOARD_PullMIPIPanelTouchResetPin(bool pullUp)
-{
-    #ifdef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
-    if (pullUp)
-    {
-        GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, 1);
-    }
-    else
-    {
-        GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, 0);
-    }
-    #endif
-}
-
-static void BOARD_ConfigMIPIPanelTouchIntPin(gt911_int_pin_mode_t mode)
-{
-    #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
-    if (mode == kGT911_IntPinInput)
-    {
-        BOARD_MIPI_PANEL_TOUCH_INT_GPIO->GDIR &= ~(1UL << BOARD_MIPI_PANEL_TOUCH_INT_PIN);
-    }
-    else
-    {
-        if (mode == kGT911_IntPinPullDown)
-        {
-            GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, 0);
-        }
-        else
-        {
-            GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, 1);
-        }
-
-        BOARD_MIPI_PANEL_TOUCH_INT_GPIO->GDIR |= (1UL << BOARD_MIPI_PANEL_TOUCH_INT_PIN);
-    }
-    #endif
-}
-
-/*Initialize your touchpad*/
-static void DEMO_InitTouch(void)
-{
-    status_t status;
-
-    const gpio_pin_config_t resetPinConfig = {
-        .direction = kGPIO_DigitalOutput, .outputLogic = 0, .interruptMode = kGPIO_NoIntmode
-    };
-    #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
-    GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, &resetPinConfig);
-    #endif
-    #ifdef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
-    GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, &resetPinConfig);
-    #endif
-
-    status = GT911_Init(&s_touchHandle, &s_touchConfig);
-
-    if (kStatus_Success != status)
-    {
-        PRINTF("ERROR: Touch IC initialization failed\r\n");
-        return;
-    }
-
-    GT911_GetResolution(&s_touchHandle, &s_touchResolutionX, &s_touchResolutionY);
-}
-
-/* Will be called by the library to read the touchpad */
-static void DEMO_ReadTouch(lv_indev_t * drv, lv_indev_data_t * data) {
-    static int touch_x = 0;
-    static int touch_y = 0;
-
-    if (kStatus_Success == GT911_GetSingleTouch(&s_touchHandle, &touch_x, &touch_y))
-    {
-        data->state = LV_INDEV_STATE_PR;
-    }
-    else
-    {
-        data->state = LV_INDEV_STATE_REL;
-    }
-
-    /*Set the last pressed coordinates*/
-    if (DEMO_PANEL_WIDTH != s_touchResolutionX) {
-        touch_x = touch_x * DEMO_PANEL_WIDTH / s_touchResolutionX;
-    }
-    data->point.x = s_touchResolutionX - 1 - touch_x;
-    
-    if (DEMO_PANEL_HEIGHT != s_touchResolutionY) {
-        touch_y = touch_y * DEMO_PANEL_HEIGHT / s_touchResolutionY;
-    }
-    data->point.y = s_touchResolutionY - 1 - touch_y;
-}
