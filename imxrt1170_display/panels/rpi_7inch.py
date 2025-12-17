@@ -5,7 +5,7 @@ Official Raspberry Pi 7-inch touchscreen display with:
 - Resolution: 800x480 @ 60Hz
 - Interface: MIPI DSI (1 lane)
 - Backlight Controller: Attiny88 (I2C address 0x45)
-- GPIO Expander: PCA6416 (I2C address 0x20)
+- GPIO Expander: PCA6416 (I2C address 0x21, some boards use 0x20)
 - Touch Controller: FT5406 (separate driver, not handled here)
 """
 
@@ -63,18 +63,17 @@ class RPI7InchDisplay(BasePanel):
         """
         Initialize RPI 7" display hardware.
 
-        - Configures I2C pins (via C helper)
+        - Creates I2C bus instances (pin muxing done in board's pins.py)
         - Initializes PCA6416 GPIO expander
         - Powers on display via Attiny88
         - Sets backlight brightness
         """
         # Initialize I2C buses if not provided
+        # Note: Pin muxing should be configured in board's pins.py
         if self.display_i2c is None:
-            # TODO: Call configure_i2c_pins() once implemented in Phase 2
             self.display_i2c = machine.I2C(1, freq=100000)
 
         if self.gpio_i2c is None:
-            # TODO: Call configure_i2c_pins() once implemented in Phase 2
             self.gpio_i2c = machine.I2C(6, freq=100000)
 
         # Initialize PCA6416 GPIO expander

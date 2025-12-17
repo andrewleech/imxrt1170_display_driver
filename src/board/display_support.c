@@ -383,6 +383,8 @@ static status_t BOARD_InitLcdPanel(void)
         }
     } else {
         // Unknown panel name
+        PRINTF("Error: Unknown panel name '%s'\r\n", panel_name);
+        PRINTF("Supported panels: rpi_7inch, rk055ahd091, rk055mhd091, rk055iqh091\r\n");
         return kStatus_InvalidArgument;
     }
 
@@ -408,6 +410,7 @@ status_t BOARD_DeinitLcdPanel(void) {
     } else if (strcmp(panel_name, "rk055iqh091") == 0) {
         status = RM68191_Deinit(&rm68191Handle);
     } else {
+        PRINTF("Error: Unknown panel name '%s'\r\n", panel_name);
         return kStatus_InvalidArgument;
     }
 
