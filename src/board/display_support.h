@@ -111,6 +111,13 @@ typedef struct {
  */
 void BOARD_InitDisplayWithConfig(const panel_config_t *config);
 
+/**
+ * @brief Get current runtime panel configuration
+ *
+ * @return Pointer to current panel config, or NULL if not initialized
+ */
+const panel_config_t* BOARD_GetPanelConfig(void);
+
 /*******************************************************************************
  * API
  ******************************************************************************/

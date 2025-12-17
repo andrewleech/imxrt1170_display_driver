@@ -566,6 +566,11 @@ void BOARD_InitDisplayWithConfig(const panel_config_t *config)
 #endif
 }
 
+const panel_config_t* BOARD_GetPanelConfig(void)
+{
+    return g_runtime_panel_config;
+}
+
 status_t BOARD_VerifyDisplayClockSource(void)
 {
     status_t status;
