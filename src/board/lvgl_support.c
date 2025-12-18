@@ -122,11 +122,11 @@ static void DEMO_WaitBufferSwitchOff(void);
 
 #if DYNAMIC_FB_ALLOC
 MP_REGISTER_ROOT_POINTER(uint8_t *s_frameBuffer_alloc);  // malloc output goes here
-uint8_t (*s_frameBuffer)[DEMO_FB_SIZE];  // this holds aligned framebuffer pointer for use
+static uint8_t *s_frameBuffer[2];  // Pointers to aligned framebuffers
 
 #if DEMO_USE_ROTATE
 MP_REGISTER_ROOT_POINTER(uint8_t *s_lvglBuffer_alloc);
-uint8_t (*s_lvglBuffer)[DEMO_FB_SIZE];
+static uint8_t *s_lvglBuffer[1];  // Pointer to aligned LVGL buffer
 #endif
 
 #else
@@ -161,16 +161,20 @@ void lv_port_disp_init(void) {
 
     BOARD_InitMipiPanelPins();
 
-    #if DYNAMIC_FB_ALLOC
-
     #define align_up(num, align) (((num) + ((align) - 1)) & ~((align) - 1))
 
-    MP_STATE_VM(s_frameBuffer_alloc) = m_new0(uint8_t, 2 * DEMO_FB_SIZE + DEMO_FB_ALIGN);
-    s_frameBuffer = (uint8_t(*)[DEMO_FB_SIZE]) align_up((uintptr_t)MP_STATE_VM(s_frameBuffer_alloc), DEMO_FB_ALIGN);
+    size_t fb_size = get_fb_size();  // Get actual frame buffer size
+
+    #if DYNAMIC_FB_ALLOC
+
+    MP_STATE_VM(s_frameBuffer_alloc) = m_new0(uint8_t, 2 * fb_size + DEMO_FB_ALIGN);
+    uint8_t *aligned_base = (uint8_t *)align_up((uintptr_t)MP_STATE_VM(s_frameBuffer_alloc), DEMO_FB_ALIGN);
+    s_frameBuffer[0] = aligned_base;
+    s_frameBuffer[1] = aligned_base + fb_size;
 
     #if DEMO_USE_ROTATE
-    MP_STATE_VM(s_lvglBuffer_alloc) = m_new0(uint8_t, DEMO_FB_SIZE + DEMO_FB_ALIGN);
-    s_lvglBuffer = (uint8_t(*)[DEMO_FB_SIZE]) align_up((uintptr_t)MP_STATE_VM(s_lvglBuffer_alloc), DEMO_FB_ALIGN);
+    MP_STATE_VM(s_lvglBuffer_alloc) = m_new0(uint8_t, fb_size + DEMO_FB_ALIGN);
+    s_lvglBuffer[0] = (uint8_t *)align_up((uintptr_t)MP_STATE_VM(s_lvglBuffer_alloc), DEMO_FB_ALIGN);
     #endif
 
 	#else // static FB alloc
@@ -246,9 +250,9 @@ void lv_port_disp_init(void) {
     lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
 
     #if DEMO_USE_ROTATE
-    lv_display_set_buffers(disp, s_lvglBuffer[0], NULL, DEMO_FB_SIZE, LV_DISPLAY_RENDER_MODE_FULL);
+    lv_display_set_buffers(disp, s_lvglBuffer[0], NULL, fb_size, LV_DISPLAY_RENDER_MODE_FULL);
     #else
-    lv_display_set_buffers(disp, s_frameBuffer[0], s_frameBuffer[1], DEMO_FB_SIZE, LV_DISPLAY_RENDER_MODE_FULL);
+    lv_display_set_buffers(disp, s_frameBuffer[0], s_frameBuffer[1], fb_size, LV_DISPLAY_RENDER_MODE_FULL);
     #endif
 
 #if LV_USE_DRAW_VG_LITE
