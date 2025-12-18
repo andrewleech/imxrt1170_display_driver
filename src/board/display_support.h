@@ -69,7 +69,6 @@
 #define DEMO_BUFFER_START_X 0U
 #define DEMO_BUFFER_START_Y 0U
 
-#define DEMO_BUFFER_STRIDE_BYTE (DEMO_BUFFER_WIDTH * DEMO_BUFFER_BYTE_PER_PIXEL)
 /* There is not frame buffer aligned requirement, consider the 64-bit AXI data
  * bus width and 32-byte cache line size, the frame buffer alignment is set to
  * 32 byte.
