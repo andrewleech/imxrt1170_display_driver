@@ -150,6 +150,12 @@ static volatile bool s_transferDone;
 static void *volatile s_inactiveFrameBuffer;
 #endif
 
+// Runtime display dimensions (set during init, used by flush)
+static uint16_t s_display_width = 0;
+static uint16_t s_display_height = 0;
+static uint16_t s_panel_width = 0;
+static uint16_t s_panel_height = 0;
+
 /*******************************************************************************
  * Code
  ******************************************************************************/
@@ -162,6 +168,15 @@ void lv_port_disp_init(void) {
     BOARD_InitMipiPanelPins();
 
     #define align_up(num, align) (((num) + ((align) - 1)) & ~((align) - 1))
+
+    // Get runtime panel dimensions early - needed for both buffer allocation and display config
+    const panel_config_t *config = BOARD_GetPanelConfig();
+    s_panel_width = config->width;
+    s_panel_height = config->height;
+    s_display_width = s_panel_width;
+    s_display_height = s_panel_height;
+    PRINTF("Panel config: %s %dx%d, DSI lanes=%d\r\n",
+           config->name, config->width, config->height, config->dsi_lanes);
 
     size_t fb_size = get_fb_size();  // Get actual frame buffer size
 
@@ -205,11 +220,13 @@ void lv_port_disp_init(void) {
 
     g_dc.ops->getLayerDefaultConfig(&g_dc, 0, &fbInfo);
     fbInfo.pixelFormat = DEMO_BUFFER_PIXEL_FORMAT;
-    fbInfo.width = DEMO_BUFFER_WIDTH;
-    fbInfo.height = DEMO_BUFFER_HEIGHT;
+    fbInfo.width = s_panel_width;
+    fbInfo.height = s_panel_height;
     fbInfo.startX = DEMO_BUFFER_START_X;
     fbInfo.startY = DEMO_BUFFER_START_Y;
-    fbInfo.strideBytes = DEMO_BUFFER_STRIDE_BYTE;
+    fbInfo.strideBytes = COMPUTE_STRIDE(s_panel_width);
+    PRINTF("Setting display controller layer: %dx%d, stride=%d bytes, format=%d\r\n",
+           fbInfo.width, fbInfo.height, fbInfo.strideBytes, fbInfo.pixelFormat);
     g_dc.ops->setLayerConfig(&g_dc, 0, &fbInfo);
 
     g_dc.ops->setCallback(&g_dc, 0, DEMO_BufferSwitchOffCallback, NULL);
@@ -245,9 +262,20 @@ void lv_port_disp_init(void) {
 
     // Changes in master (v9 development) https://github.com/lvgl/lvgl/issues/4011
 
-    lv_display_t * disp = lv_display_create(LVGL_BUFFER_WIDTH, LVGL_BUFFER_HEIGHT);
+    // Panel dimensions already set at start of function
+
+    // TODO: Re-enable dimension swap after testing stability
+    #if 0 // DEMO_USE_ROTATE
+    // Swap dimensions for rotation
+    uint16_t temp = s_display_width;
+    s_display_width = s_display_height;
+    s_display_height = temp;
+    #endif
+
+    lv_display_t * disp = lv_display_create(s_display_width, s_display_height);
     lv_display_set_flush_cb(disp, DEMO_FlushDisplay);
-    lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
+    // TODO: Re-enable rotation after testing stability
+    // lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
 
     #if DEMO_USE_ROTATE
     lv_display_set_buffers(disp, s_lvglBuffer[0], NULL, fb_size, LV_DISPLAY_RENDER_MODE_FULL);
@@ -356,16 +384,16 @@ void DEMO_FlushDisplay(lv_display_t * disp, const lv_area_t * area, uint8_t * co
 
     #if LV_USE_ROTATE_PXP /* Use PXP to rotate the panel. */
     lv_draw_pxp_rotate(color_p, inactiveFrameBuffer,
-                       LVGL_BUFFER_WIDTH, LVGL_BUFFER_HEIGHT,
-                       COMPUTE_STRIDE(LVGL_BUFFER_WIDTH),
-                       COMPUTE_STRIDE(DEMO_BUFFER_WIDTH),
+                       s_display_width, s_display_height,
+                       COMPUTE_STRIDE(s_display_width),
+                       COMPUTE_STRIDE(s_panel_width),
                        LV_DISPLAY_ROTATION_270, disp->color_format);
 
     #else /* Use CPU to rotate the panel. */
     lv_draw_sw_rotate(color_p, inactiveFrameBuffer,
-                      LVGL_BUFFER_WIDTH, LVGL_BUFFER_HEIGHT,
-                      COMPUTE_STRIDE(LVGL_BUFFER_WIDTH),
-                      COMPUTE_STRIDE(DEMO_BUFFER_WIDTH),
+                      s_display_width, s_display_height,
+                      COMPUTE_STRIDE(s_display_width),
+                      COMPUTE_STRIDE(s_panel_width),
                       LV_DISPLAY_ROTATION_270, disp->color_format);
     #endif
 
