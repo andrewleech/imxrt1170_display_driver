@@ -190,14 +190,11 @@ void lv_port_disp_init(void) {
 
     PRINTF("FB allocation: fb_size=%d, aligned=%d, align=%d\n",
            fb_size, fb_size_aligned, DEMO_FB_ALIGN);
-    PRINTF("  Raw alloc: %p\n", MP_STATE_VM(s_frameBuffer_alloc));
-    PRINTF("  buf0=%p (offset=%d, aligned=%s)\n",
+    PRINTF("  buf0=%p (aligned=%s)\n",
            s_frameBuffer[0],
-           (uint8_t*)s_frameBuffer[0] - (uint8_t*)aligned_base,
            ((uintptr_t)s_frameBuffer[0] & (DEMO_FB_ALIGN-1)) == 0 ? "YES" : "NO");
-    PRINTF("  buf1=%p (offset=%d, aligned=%s)\n",
+    PRINTF("  buf1=%p (aligned=%s)\n",
            s_frameBuffer[1],
-           (uint8_t*)s_frameBuffer[1] - (uint8_t*)aligned_base,
            ((uintptr_t)s_frameBuffer[1] & (DEMO_FB_ALIGN-1)) == 0 ? "YES" : "NO");
 
     #if DEMO_USE_ROTATE
@@ -294,18 +291,11 @@ void lv_port_disp_init(void) {
 
     // Panel dimensions already set at start of function
 
-    // TODO: Re-enable dimension swap after testing stability
-    #if 0 // DEMO_USE_ROTATE
-    // Swap dimensions for rotation
-    uint16_t temp = s_display_width;
-    s_display_width = s_display_height;
-    s_display_height = temp;
-    #endif
+    PRINTF("Creating LVGL display: %dx%d (panel is %dx%d)\n",
+           s_display_width, s_display_height, s_panel_width, s_panel_height);
 
     lv_display_t * disp = lv_display_create(s_display_width, s_display_height);
     lv_display_set_flush_cb(disp, DEMO_FlushDisplay);
-    // TODO: Re-enable rotation after testing stability
-    // lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
 
     #if DEMO_USE_ROTATE
     lv_display_set_buffers(disp, s_lvglBuffer[0], NULL, fb_size, LV_DISPLAY_RENDER_MODE_FULL);
