@@ -108,10 +108,6 @@ status_t RPI_Init(display_handle_t *handle, const display_config_t *config)
     param[5] = 0x00;
     MIPI_DSI_GenericWrite(dsiDevice, param, 6);
 
-    // NOTE: Timing registers commented out - causing corruption
-    // The TC358762 may be auto-detecting timing from DSI stream
-    // or needs different register values/format
-    /*
     //rpi_touchscreen_write(dsi, HTIME1, htotal | (hsync_len << 16));
     // htotal = 800 + 70 + 20 + 23 = 913, hsync_len = 20
     param[0] = 0x18;  // HTIME1 register
@@ -151,7 +147,6 @@ status_t RPI_Init(display_handle_t *handle, const display_config_t *config)
     param[4] = 0x07;  // 7 & 0xFF (vfp)
     param[5] = 0x00;  // (7 >> 8) & 0xFF
     MIPI_DSI_GenericWrite(dsiDevice, param, 6);
-    */
 
     //rpi_touchscreen_write(dsi, LCDCTRL, 0x00100150);
     param[0] = 0x20;

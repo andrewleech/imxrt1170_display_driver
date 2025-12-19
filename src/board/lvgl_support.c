@@ -130,9 +130,9 @@ static uint8_t *s_lvglBuffer[1];  // Pointer to aligned LVGL buffer
 #endif
 
 #else
-SDK_ALIGN(static uint8_t __attribute__((section(".sdram"))) s_frameBuffer[2][DEMO_FB_SIZE], DEMO_FB_ALIGN);
+SDK_ALIGN(static uint8_t __attribute__((section(".sdram"))) s_frameBuffer[2][DEMO_FB_SIZE_STATIC], DEMO_FB_ALIGN);
 #if DEMO_USE_ROTATE
-SDK_ALIGN(static uint8_t __attribute__((section(".sdram"))) s_lvglBuffer[1][DEMO_FB_SIZE], DEMO_FB_ALIGN);
+SDK_ALIGN(static uint8_t __attribute__((section(".sdram"))) s_lvglBuffer[1][DEMO_FB_SIZE_STATIC], DEMO_FB_ALIGN);
 #endif
 #endif
 
@@ -175,17 +175,30 @@ void lv_port_disp_init(void) {
     s_panel_height = config->height;
     s_display_width = s_panel_width;
     s_display_height = s_panel_height;
-    PRINTF("Panel config: %s %dx%d, DSI lanes=%d\r\n",
-           config->name, config->width, config->height, config->dsi_lanes);
 
     size_t fb_size = get_fb_size();  // Get actual frame buffer size
 
     #if DYNAMIC_FB_ALLOC
 
-    MP_STATE_VM(s_frameBuffer_alloc) = m_new0(uint8_t, 2 * fb_size + DEMO_FB_ALIGN);
+    // Round fb_size up to alignment boundary to ensure both buffers are aligned
+    size_t fb_size_aligned = align_up(fb_size, DEMO_FB_ALIGN);
+
+    MP_STATE_VM(s_frameBuffer_alloc) = m_new0(uint8_t, 2 * fb_size_aligned + DEMO_FB_ALIGN);
     uint8_t *aligned_base = (uint8_t *)align_up((uintptr_t)MP_STATE_VM(s_frameBuffer_alloc), DEMO_FB_ALIGN);
     s_frameBuffer[0] = aligned_base;
-    s_frameBuffer[1] = aligned_base + fb_size;
+    s_frameBuffer[1] = aligned_base + fb_size_aligned;
+
+    PRINTF("FB allocation: fb_size=%d, aligned=%d, align=%d\n",
+           fb_size, fb_size_aligned, DEMO_FB_ALIGN);
+    PRINTF("  Raw alloc: %p\n", MP_STATE_VM(s_frameBuffer_alloc));
+    PRINTF("  buf0=%p (offset=%d, aligned=%s)\n",
+           s_frameBuffer[0],
+           (uint8_t*)s_frameBuffer[0] - (uint8_t*)aligned_base,
+           ((uintptr_t)s_frameBuffer[0] & (DEMO_FB_ALIGN-1)) == 0 ? "YES" : "NO");
+    PRINTF("  buf1=%p (offset=%d, aligned=%s)\n",
+           s_frameBuffer[1],
+           (uint8_t*)s_frameBuffer[1] - (uint8_t*)aligned_base,
+           ((uintptr_t)s_frameBuffer[1] & (DEMO_FB_ALIGN-1)) == 0 ? "YES" : "NO");
 
     #if DEMO_USE_ROTATE
     MP_STATE_VM(s_lvglBuffer_alloc) = m_new0(uint8_t, fb_size + DEMO_FB_ALIGN);
@@ -198,6 +211,14 @@ void lv_port_disp_init(void) {
     #if DEMO_USE_ROTATE
     memset(s_lvglBuffer, 0, sizeof(s_lvglBuffer));
     #endif
+
+    PRINTF("FB static allocation: fb_size=%d, align=%d, buf0=%p, buf1=%p\n",
+           fb_size, DEMO_FB_ALIGN, s_frameBuffer[0], s_frameBuffer[1]);
+    PRINTF("  buf0 alignment check: %p & %d = %d (should be 0)\n",
+           s_frameBuffer[0], DEMO_FB_ALIGN-1, ((uintptr_t)s_frameBuffer[0]) & (DEMO_FB_ALIGN-1));
+    PRINTF("  buf1 alignment check: %p & %d = %d (should be 0)\n",
+           s_frameBuffer[1], DEMO_FB_ALIGN-1, ((uintptr_t)s_frameBuffer[1]) & (DEMO_FB_ALIGN-1));
+
     #endif
 
     status_t status;
@@ -225,8 +246,17 @@ void lv_port_disp_init(void) {
     fbInfo.startX = DEMO_BUFFER_START_X;
     fbInfo.startY = DEMO_BUFFER_START_Y;
     fbInfo.strideBytes = COMPUTE_STRIDE(s_panel_width);
-    PRINTF("Setting display controller layer: %dx%d, stride=%d bytes, format=%d\r\n",
-           fbInfo.width, fbInfo.height, fbInfo.strideBytes, fbInfo.pixelFormat);
+
+    size_t computed_stride = COMPUTE_STRIDE(s_panel_width);
+    size_t computed_fb_size = computed_stride * s_panel_height;
+
+    PRINTF("Display config: %dx%d, stride=%d bytes\n",
+           fbInfo.width, fbInfo.height, fbInfo.strideBytes);
+    PRINTF("  Computed: stride=%d, fb_size=%d (actual fb_size=%d)\n",
+           computed_stride, computed_fb_size, fb_size);
+    PRINTF("  Pixel format: RGB565 (2 bytes/pixel)\n");
+    PRINTF("  Stride alignment: LV_DRAW_BUF_ALIGN=%d\n", LV_DRAW_BUF_ALIGN);
+
     g_dc.ops->setLayerConfig(&g_dc, 0, &fbInfo);
 
     g_dc.ops->setCallback(&g_dc, 0, DEMO_BufferSwitchOffCallback, NULL);
@@ -407,10 +437,14 @@ void DEMO_FlushDisplay(lv_display_t * disp, const lv_area_t * area, uint8_t * co
 
     #else /* DEMO_USE_ROTATE */
 
+    /* Flush cache so display controller can see the pixels LVGL just rendered */
     DEMO_FLUSH_DCACHE();
 
+    /* Give the newly rendered buffer to the display controller */
     g_dc.ops->setFrameBuffer(&g_dc, 0, (void *)color_p);
 
+    /* Wait for the display controller to switch to this buffer before
+     * telling LVGL it can reuse it for the next frame */
     DEMO_WaitBufferSwitchOff();
 
     /* IMPORTANT!!!
