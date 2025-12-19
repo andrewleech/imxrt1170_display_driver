@@ -437,8 +437,17 @@ void DEMO_FlushDisplay(lv_display_t * disp, const lv_area_t * area, uint8_t * co
 
     #else /* DEMO_USE_ROTATE */
 
-    /* Flush cache so display controller can see the pixels LVGL just rendered */
-    DEMO_FLUSH_DCACHE();
+    /* Flush cache for the specific framebuffer that was just rendered
+     * This is more efficient than flushing the entire D-cache */
+    const panel_config_t *panel = BOARD_GetPanelConfig();
+    if (panel) {
+        size_t stride = COMPUTE_STRIDE(panel->width);
+        size_t fb_bytes = stride * panel->height;
+        SCB_CleanInvalidateDCache_by_Addr((uint32_t *)color_p, fb_bytes);
+    } else {
+        /* Fallback to full cache flush if no panel config */
+        DEMO_FLUSH_DCACHE();
+    }
 
     /* Give the newly rendered buffer to the display controller */
     g_dc.ops->setFrameBuffer(&g_dc, 0, (void *)color_p);
