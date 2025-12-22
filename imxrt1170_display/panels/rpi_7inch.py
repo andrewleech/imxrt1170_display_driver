@@ -45,17 +45,17 @@ class RPI7InchDisplay(BasePanel):
         self.pca6416_addr = pca6416_addr if pca6416_addr is not None else self.PCA6416_ADDR_DEFAULT
 
     def get_panel_config(self):
-        """Return RPI 7" panel timing configuration"""
+        """Return RPI 7" panel timing configuration (matching TC358762 bridge registers)"""
         return {
             'name': 'rpi_7inch',
             'width': 800,
             'height': 480,
-            'hsw': 20,   # Horizontal sync width
-            'hfp': 70,   # Horizontal front porch
-            'hbp': 23,   # Horizontal back porch
-            'vsw': 2,    # Vertical sync width
-            'vfp': 7,    # Vertical front porch
-            'vbp': 21,   # Vertical back porch
+            'hsw': 20,   # Horizontal sync width (programmed into TC358762)
+            'hfp': 70,   # Horizontal front porch (programmed into TC358762)
+            'hbp': 23,   # Horizontal back porch (programmed into TC358762)
+            'vsw': 2,    # Vertical sync width (programmed into TC358762)
+            'vfp': 7,    # Vertical front porch (programmed into TC358762)
+            'vbp': 21,   # Vertical back porch (programmed into TC358762)
             'dsi_lanes': 1
         }
 
