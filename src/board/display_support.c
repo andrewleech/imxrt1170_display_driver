@@ -169,7 +169,7 @@ static dc_fb_lcdifv2_config_t s_dcFbLcdifv2Config = {
     .vfp           = 16,
     .vbp           = 14,
     .polarityFlags = DEMO_LCDIF_POL_FLAGS,
-    .lineOrder     = kLCDIFV2_LineOrderBGR,  // RPI panel needs BGR byte order
+    .lineOrder     = kLCDIFV2_LineOrderRGB,  // RPI panel needs BGR byte order
 /* CM4 is domain 1, CM7 is domain 0. */
 #if (__CORTEX_M <= 4)
     .domain = 1,
