@@ -8,7 +8,7 @@
 
 static mp_obj_t ___init___(void) {
     lv_port_disp_init();
-    lv_port_indev_init();
+    // lv_port_indev_init();
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(___init___obj, ___init___);

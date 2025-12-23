@@ -69,7 +69,7 @@
 #endif
 
 #define DEMO_FB_SIZE \
-    (((DEMO_BUFFER_WIDTH * DEMO_BUFFER_HEIGHT * LCD_FB_BYTE_PER_PIXEL) + DEMO_FB_ALIGN - 1) & ~(DEMO_FB_ALIGN - 1))
+        (((DEMO_BUFFER_WIDTH * DEMO_BUFFER_HEIGHT * LCD_FB_BYTE_PER_PIXEL) + DEMO_FB_ALIGN - 1) & ~(DEMO_FB_ALIGN - 1))
 
 #if DEMO_USE_ROTATE
 #define LVGL_BUFFER_WIDTH  DEMO_BUFFER_HEIGHT
@@ -88,15 +88,15 @@
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
-static void DEMO_FlushDisplay(lv_display_t * disp, const lv_area_t * area, uint8_t * px_map);
+static void DEMO_FlushDisplay(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 
 #if (LV_USE_GPU_NXP_VG_LITE || LV_USE_GPU_NXP_PXP)
-static void DEMO_CleanInvalidateCache(lv_display_t * disp);
+static void DEMO_CleanInvalidateCache(lv_display_t *disp);
 #endif
 
 static void DEMO_InitTouch(void);
 
-static void DEMO_ReadTouch(lv_indev_t * indev_drv, lv_indev_data_t * data);
+static void DEMO_ReadTouch(lv_indev_t *indev_drv, lv_indev_data_t *data);
 
 static void DEMO_BufferSwitchOffCallback(void *param, void *switchOffBuffer);
 
@@ -113,12 +113,12 @@ static void DEMO_WaitBufferSwitchOff(void);
 #define DYNAMIC_FB_ALLOC 1
 
 #if DYNAMIC_FB_ALLOC
-MP_REGISTER_ROOT_POINTER(uint8_t *s_frameBuffer_alloc);  // malloc output goes here
-uint8_t (*s_frameBuffer)[DEMO_FB_SIZE];  // this holds aligned framebuffer pointer for use
+MP_REGISTER_ROOT_POINTER(uint8_t * s_frameBuffer_alloc);  // malloc output goes here
+uint8_t(*s_frameBuffer)[DEMO_FB_SIZE];   // this holds aligned framebuffer pointer for use
 
 #if DEMO_USE_ROTATE
-MP_REGISTER_ROOT_POINTER(uint8_t *s_lvglBuffer_alloc);
-uint8_t (*s_lvglBuffer)[DEMO_FB_SIZE];
+MP_REGISTER_ROOT_POINTER(uint8_t * s_lvglBuffer_alloc);
+uint8_t(*s_lvglBuffer)[DEMO_FB_SIZE];
 #endif
 
 #else
@@ -142,19 +142,19 @@ static volatile bool s_transferDone;
 static void *volatile s_inactiveFrameBuffer;
 #endif
 
-static gt911_handle_t s_touchHandle;
-static const gt911_config_t s_touchConfig = {
-    .I2C_SendFunc     = BOARD_MIPIPanelTouch_I2C_Send,
-    .I2C_ReceiveFunc  = BOARD_MIPIPanelTouch_I2C_Receive,
-    .pullResetPinFunc = BOARD_PullMIPIPanelTouchResetPin,
-    .intPinFunc       = BOARD_ConfigMIPIPanelTouchIntPin,
-    .timeDelayMsFunc  = VIDEO_DelayMs,
-    .touchPointNum    = 1,
-    .i2cAddrMode      = kGT911_I2cAddrMode0,
-    .intTrigMode      = kGT911_IntRisingEdge,
-};
-static int s_touchResolutionX;
-static int s_touchResolutionY;
+// static gt911_handle_t s_touchHandle;
+// static const gt911_config_t s_touchConfig = {
+//     .I2C_SendFunc     = BOARD_MIPIPanelTouch_I2C_Send,
+//     .I2C_ReceiveFunc  = BOARD_MIPIPanelTouch_I2C_Receive,
+//     .pullResetPinFunc = BOARD_PullMIPIPanelTouchResetPin,
+//     .intPinFunc       = BOARD_ConfigMIPIPanelTouchIntPin,
+//     .timeDelayMsFunc  = VIDEO_DelayMs,
+//     .touchPointNum    = 1,
+//     .i2cAddrMode      = kGT911_I2cAddrMode0,
+//     .intTrigMode      = kGT911_IntRisingEdge,
+// };
+// static int s_touchResolutionX;
+// static int s_touchResolutionY;
 
 /*******************************************************************************
  * Code
@@ -168,19 +168,19 @@ void lv_port_disp_init(void) {
     BOARD_InitMipiPanelPins();
 
     #if DYNAMIC_FB_ALLOC
-    
+
     #define align_up(num, align) (((num) + ((align) - 1)) & ~((align) - 1))
 
     MP_STATE_VM(s_frameBuffer_alloc) = m_new0(uint8_t, 2 * DEMO_FB_SIZE + DEMO_FB_ALIGN);
-    s_frameBuffer = (uint8_t(*)[DEMO_FB_SIZE]) align_up((uintptr_t)MP_STATE_VM(s_frameBuffer_alloc), DEMO_FB_ALIGN);
-    
+    s_frameBuffer = (uint8_t(*)[DEMO_FB_SIZE])align_up((uintptr_t)MP_STATE_VM(s_frameBuffer_alloc), DEMO_FB_ALIGN);
+
     #if DEMO_USE_ROTATE
     MP_STATE_VM(s_lvglBuffer_alloc) = m_new0(uint8_t, DEMO_FB_SIZE + DEMO_FB_ALIGN);
-    s_lvglBuffer = (uint8_t(*)[DEMO_FB_SIZE]) align_up((uintptr_t)MP_STATE_VM(s_lvglBuffer_alloc), DEMO_FB_ALIGN);
+    s_lvglBuffer = (uint8_t(*)[DEMO_FB_SIZE])align_up((uintptr_t)MP_STATE_VM(s_lvglBuffer_alloc), DEMO_FB_ALIGN);
     #endif
-    
-	#else // static FB alloc
-	
+
+    #else // static FB alloc
+
     memset(s_frameBuffer, 0, sizeof(s_frameBuffer));
     #if DEMO_USE_ROTATE
     memset(s_lvglBuffer, 0, sizeof(s_lvglBuffer));
@@ -247,33 +247,33 @@ void lv_port_disp_init(void) {
 
     // Changes in master (v9 development) https://github.com/lvgl/lvgl/issues/4011
 
-    lv_display_t * disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);
+    lv_display_t *disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);
     lv_display_set_flush_cb(disp, (void *)DEMO_FlushDisplay);
     lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
 
     #if DEMO_USE_ROTATE
-    lv_display_set_buffers(disp, s_lvglBuffer[0], NULL, DEMO_BUFFER_WIDTH*DEMO_BUFFER_HEIGHT*DEMO_BUFFER_BYTE_PER_PIXEL, LCD_RENDER_MODE);
+    lv_display_set_buffers(disp, s_lvglBuffer[0], NULL, DEMO_BUFFER_WIDTH * DEMO_BUFFER_HEIGHT * DEMO_BUFFER_BYTE_PER_PIXEL, LCD_RENDER_MODE);
     #else
-    lv_display_set_buffers(disp, s_frameBuffer[0], s_frameBuffer[1], DEMO_BUFFER_WIDTH*DEMO_BUFFER_HEIGHT*DEMO_BUFFER_BYTE_PER_PIXEL, LCD_RENDER_MODE);
+    lv_display_set_buffers(disp, s_frameBuffer[0], s_frameBuffer[1], DEMO_BUFFER_WIDTH * DEMO_BUFFER_HEIGHT * DEMO_BUFFER_BYTE_PER_PIXEL, LCD_RENDER_MODE);
     #endif
 
-#if LV_USE_GPU_NXP_VG_LITE
-    if (vg_lite_init(DEFAULT_VG_LITE_TW_WIDTH, DEFAULT_VG_LITE_TW_HEIGHT) != VG_LITE_SUCCESS)
-    {
+    #if LV_USE_GPU_NXP_VG_LITE
+    if (vg_lite_init(DEFAULT_VG_LITE_TW_WIDTH, DEFAULT_VG_LITE_TW_HEIGHT) != VG_LITE_SUCCESS) {
         PRINTF("VGLite init error. STOP.");
         vg_lite_close();
-        while (1)
+        while (1) {
             ;
+        }
     }
 
-    if (vg_lite_set_command_buffer_size(VG_LITE_COMMAND_BUFFER_SIZE) != VG_LITE_SUCCESS)
-    {
+    if (vg_lite_set_command_buffer_size(VG_LITE_COMMAND_BUFFER_SIZE) != VG_LITE_SUCCESS) {
         PRINTF("VGLite set command buffer. STOP.");
         vg_lite_close();
-        while (1)
+        while (1) {
             ;
+        }
     }
-#endif
+    #endif
 }
 
 void lv_port_disp_deinit(void) {
@@ -297,7 +297,7 @@ static void DEMO_BufferSwitchOffCallback(void *param, void *switchOffBuffer) {
 
 #if (LV_USE_GPU_NXP_VG_LITE || LV_USE_GPU_NXP_PXP)
 // static void DEMO_CleanInvalidateCache(lv_disp_drv_t *disp_drv) {
-    // DEMO_FLUSH_DCACHE();
+// DEMO_FLUSH_DCACHE();
 // }
 #endif
 
@@ -314,7 +314,7 @@ static void DEMO_WaitBufferSwitchOff(void) {
     #endif
 }
 
-void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t * color_p) {
+void DEMO_FlushDisplay(lv_display_t *disp_drv, const lv_area_t *area, uint8_t *color_p) {
 
     if (!lv_disp_flush_is_last(disp_drv)) {
         lv_disp_flush_ready(disp_drv);
@@ -349,10 +349,10 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
     SCB_CleanInvalidateDCache_by_Addr(inactiveFrameBuffer, DEMO_FB_SIZE);
     #endif
 
-    lv_color_t * dest_buf = ((lv_color_t *)inactiveFrameBuffer);
+    lv_color_t *dest_buf = ((lv_color_t *)inactiveFrameBuffer);
 
-    int32_t w = LVGL_BUFFER_WIDTH; //lv_area_get_width(area);
-    int32_t h = LVGL_BUFFER_HEIGHT; //lv_area_get_height(area);
+    int32_t w = LVGL_BUFFER_WIDTH; // lv_area_get_width(area);
+    int32_t h = LVGL_BUFFER_HEIGHT; // lv_area_get_height(area);
     lv_color_format_t cf = lv_display_get_color_format(disp_drv);
     // uint32_t px_size = lv_color_format_get_size(cf);
     uint32_t w_stride = lv_draw_buf_width_to_stride(w, cf);
@@ -375,7 +375,7 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
     // const lv_area_t * dest_area = &dest_area;
     // lv_coord_t dest_stride = DEMO_BUFFER_WIDTH;
     // const lv_area_t * src_area = area;
-    // int32_t src_width = 
+    // int32_t src_width =
     // int32_t src_height = lv_area_get_height(area);
     // lv_coord_t src_stride = lv_area_get_width(area);
     // lv_opa_t opa = LV_OPA_COVER;
@@ -397,11 +397,11 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
     // }
     #endif
 
-#if __CORTEX_M == 4
+    #if __CORTEX_M == 4
     L1CACHE_CleanInvalidateSystemCacheByRange((uint32_t)s_inactiveFrameBuffer, DEMO_FB_SIZE);
-#else
+    #else
     SCB_CleanInvalidateDCache_by_Addr(inactiveFrameBuffer, DEMO_FB_SIZE);
-#endif
+    #endif
 
     g_dc.ops->setFrameBuffer(&g_dc, 0, inactiveFrameBuffer);
 
@@ -411,11 +411,11 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
 
     #else /* DEMO_USE_ROTATE */
 
-#if __CORTEX_M == 4
+    #if __CORTEX_M == 4
     L1CACHE_CleanInvalidateSystemCacheByRange((uint32_t)color_p, DEMO_FB_SIZE);
-#else
+    #else
     SCB_CleanInvalidateDCache_by_Addr(color_p, DEMO_FB_SIZE);
-#endif
+    #endif
 
     g_dc.ops->setFrameBuffer(&g_dc, 0, (void *)color_p);
 
@@ -427,108 +427,108 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
     #endif /* DEMO_USE_ROTATE */
 }
 
-void lv_port_indev_init(void) {
-	BOARD_MIPIPanelTouch_I2C_Init();
-    // static lv_indev_drv_t indev_drv;
+// void lv_port_indev_init(void) {
+//      // BOARD_MIPIPanelTouch_I2C_Init();
+//     // static lv_indev_drv_t indev_drv;
 
-    /*------------------
-     * Touchpad
-     * -----------------*/
+//     /*------------------
+//      * Touchpad
+//      * -----------------*/
 
-    /*Initialize your touchpad */
-    DEMO_InitTouch();
+//     /*Initialize your touchpad */
+//     // DEMO_InitTouch();
 
-    /*Register a touchpad input device*/
-    lv_indev_t * indev = lv_indev_create();
-    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
-    lv_indev_set_read_cb(indev, DEMO_ReadTouch);
-}
+//     /*Register a touchpad input device*/
+//     lv_indev_t * indev = lv_indev_create();
+//     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+//     lv_indev_set_read_cb(indev, DEMO_ReadTouch);
+// }
 
-static void BOARD_PullMIPIPanelTouchResetPin(bool pullUp)
-{
-    #ifdef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
-    if (pullUp)
-    {
-        GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, 1);
-    }
-    else
-    {
-        GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, 0);
-    }
-    #endif
-}
+// static void BOARD_PullMIPIPanelTouchResetPin(bool pullUp)
+// {
+//     #ifdef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
+//     if (pullUp)
+//     {
+//         GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, 1);
+//     }
+//     else
+//     {
+//         GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, 0);
+//     }
+//     #endif
+// }
 
-static void BOARD_ConfigMIPIPanelTouchIntPin(gt911_int_pin_mode_t mode)
-{
-    #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
-    if (mode == kGT911_IntPinInput)
-    {
-        BOARD_MIPI_PANEL_TOUCH_INT_GPIO->GDIR &= ~(1UL << BOARD_MIPI_PANEL_TOUCH_INT_PIN);
-    }
-    else
-    {
-        if (mode == kGT911_IntPinPullDown)
-        {
-            GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, 0);
-        }
-        else
-        {
-            GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, 1);
-        }
+// static void BOARD_ConfigMIPIPanelTouchIntPin(gt911_int_pin_mode_t mode)
+// {
+//     #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
+//     if (mode == kGT911_IntPinInput)
+//     {
+//         BOARD_MIPI_PANEL_TOUCH_INT_GPIO->GDIR &= ~(1UL << BOARD_MIPI_PANEL_TOUCH_INT_PIN);
+//     }
+//     else
+//     {
+//         if (mode == kGT911_IntPinPullDown)
+//         {
+//             GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, 0);
+//         }
+//         else
+//         {
+//             GPIO_PinWrite(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, 1);
+//         }
 
-        BOARD_MIPI_PANEL_TOUCH_INT_GPIO->GDIR |= (1UL << BOARD_MIPI_PANEL_TOUCH_INT_PIN);
-    }
-    #endif
-}
+//         BOARD_MIPI_PANEL_TOUCH_INT_GPIO->GDIR |= (1UL << BOARD_MIPI_PANEL_TOUCH_INT_PIN);
+//     }
+//     #endif
+// }
 
 /*Initialize your touchpad*/
-static void DEMO_InitTouch(void)
-{
-    status_t status;
+// static void DEMO_InitTouch(void)
+// {
+//     status_t status;
 
-    const gpio_pin_config_t resetPinConfig = {
-        .direction = kGPIO_DigitalOutput, .outputLogic = 0, .interruptMode = kGPIO_NoIntmode
-    };
-    #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
-    GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, &resetPinConfig);
-    #endif
-    #ifdef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
-    GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, &resetPinConfig);
-    #endif
+//     const gpio_pin_config_t resetPinConfig = {
+//         .direction = kGPIO_DigitalOutput, .outputLogic = 0, .interruptMode = kGPIO_NoIntmode
+//     };
+//     #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
+//     GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, &resetPinConfig);
+//     #endif
+//     #ifdef BOARD_MIPI_PANEL_TOUCH_RST_GPIO
+//     GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_RST_GPIO, BOARD_MIPI_PANEL_TOUCH_RST_PIN, &resetPinConfig);
+//     #endif
 
-    status = GT911_Init(&s_touchHandle, &s_touchConfig);
+//     status = GT911_Init(&s_touchHandle, &s_touchConfig);
 
-    if (kStatus_Success != status)
-    {
-        PRINTF("ERROR: Touch IC initialization failed\r\n");
-        return;
-    }
+//     if (kStatus_Success != status)
+//     {
+//         PRINTF("ERROR: Touch IC initialization failed\r\n");
+//         return;
+//     }
 
-    GT911_GetResolution(&s_touchHandle, &s_touchResolutionX, &s_touchResolutionY);
-}
+//     GT911_GetResolution(&s_touchHandle, &s_touchResolutionX, &s_touchResolutionY);
+// }
 
 /* Will be called by the library to read the touchpad */
-static void DEMO_ReadTouch(lv_indev_t * drv, lv_indev_data_t * data) {
-    static int touch_x = 0;
-    static int touch_y = 0;
+// static void DEMO_ReadTouch(lv_indev_t * drv, lv_indev_data_t * data) {
+//     static int touch_x = 0;
+//     static int touch_y = 0;
 
-    if (kStatus_Success == GT911_GetSingleTouch(&s_touchHandle, &touch_x, &touch_y))
-    {
-        data->state = LV_INDEV_STATE_PR;
-    }
-    else
-    {
-        data->state = LV_INDEV_STATE_REL;
-    }
+//     if (kStatus_Success == GT911_GetSingleTouch(&s_touchHandle, &touch_x, &touch_y))
+//     {
+//         data->state = LV_INDEV_STATE_PR;
+//     }
+//     else
+//     {
+//         data->state = LV_INDEV_STATE_REL;
+//     }
 
-    /*Set the last pressed coordinates*/
-    if (DEMO_PANEL_WIDTH != s_touchResolutionX) {
-        touch_x = touch_x * DEMO_PANEL_WIDTH / s_touchResolutionX;
-    }
-    data->point.x = s_touchResolutionX - 1 - touch_x;
-    
-    if (DEMO_PANEL_HEIGHT != s_touchResolutionY) {
-        touch_y = touch_y * DEMO_PANEL_HEIGHT / s_touchResolutionY;
-    }
-    data->point.y = s_touchResolutionY - 1 - touch_y;
-}
+//     /*Set the last pressed coordinates*/
+//     if (DEMO_PANEL_WIDTH != s_touchResolutionX) {
+//         touch_x = touch_x * DEMO_PANEL_WIDTH / s_touchResolutionX;
+//     }
+//     data->point.x = s_touchResolutionX - 1 - touch_x;
+
+//     if (DEMO_PANEL_HEIGHT != s_touchResolutionY) {
+//         touch_y = touch_y * DEMO_PANEL_HEIGHT / s_touchResolutionY;
+//     }
+//     data->point.y = s_touchResolutionY - 1 - touch_y;
+// }
