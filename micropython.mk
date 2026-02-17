@@ -37,6 +37,7 @@ SRC_USERMOD += $(addprefix $(SRC_DIR)/,\
 	video/fsl_video_common.c \
 	video/rpi.c \
 	video/rpi_support.c \
+	video/fsl_ili9881c.c \
 	video/pca6416.c \
 	video/pca9530.c \
 )

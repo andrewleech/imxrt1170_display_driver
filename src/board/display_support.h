@@ -21,10 +21,16 @@
 
 /* @TEST_ANCHOR */
 
+/* Include board-specific display configuration if it exists */
+#if __has_include("display_board_config.h")
+#include "display_board_config.h"
+#endif
+
 #define DEMO_PANEL_RK055AHD091 0 /* 720 * 1280, RK055AHD091-CTG(RK055HDMIPI4M) */
 #define DEMO_PANEL_RK055IQH091 1 /* 540 * 960,  RK055IQH091-CTG */
 #define DEMO_PANEL_RK055MHD091 2 /* 720 * 1280, RK055MHD091A0-CTG(RK055HDMIPI4MA0) */
 #define DEMO_PANEL_RASPI_7INCH 3 /* 800 * 480, Raspberry Pi 7" */
+#define DEMO_PANEL_ILI9881C    4 /* 720 * 1200, ILI9881C (WF50DTYA3MNG10000) */
 
 #define DEMO_DISPLAY_CONTROLLER_ELCDIF  0
 #define DEMO_DISPLAY_CONTROLLER_LCDIFV2 1
@@ -79,6 +85,11 @@
 #define DEMO_PANEL_WIDTH  (800)
 #define DEMO_PANEL_HEIGHT (480)
 
+#elif (DEMO_PANEL_ILI9881C == DEMO_PANEL)
+
+#define DEMO_PANEL_WIDTH  (720)
+#define DEMO_PANEL_HEIGHT (1200)
+
 #endif
 
 #define DEMO_BUFFER_WIDTH  DEMO_PANEL_WIDTH
@@ -105,6 +116,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 status_t BOARD_PrepareDisplayController(void);
+status_t BOARD_StartLcdPanel(void);
 status_t BOARD_DeinitLcdPanel(void);
 
 #if defined(__cplusplus)

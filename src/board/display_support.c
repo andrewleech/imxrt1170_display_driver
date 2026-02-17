@@ -18,6 +18,8 @@
 #include "rpi.h"
 #include "pca6416.h"
 #include "pca9530.h"
+#elif (DEMO_PANEL_ILI9881C == DEMO_PANEL)
+#include "fsl_ili9881c.h"
 #endif
 #include "pin_mux.h"
 #include "board.h"
@@ -70,6 +72,15 @@
 #define DEMO_VFP 7
 #define DEMO_VBP 21
 
+#elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+
+#define DEMO_HSW 8
+#define DEMO_HFP 32
+#define DEMO_HBP 32
+#define DEMO_VSW 4
+#define DEMO_VFP 16
+#define DEMO_VBP 14
+
 #endif
 
 #if (DEMO_DISPLAY_CONTROLLER == DEMO_DISPLAY_CONTROLLER_LCDIFV2)
@@ -93,6 +104,8 @@
 #define DEMO_MIPI_DSI          (&g_mipiDsi)
 #if (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
 #define DEMO_MIPI_DSI_LANE_NUM 1
+#elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+#define DEMO_MIPI_DSI_LANE_NUM 2
 #else
 #define DEMO_MIPI_DSI_LANE_NUM 2
 #endif
@@ -186,6 +199,22 @@ static const rpi_resource_t rpiResource = {
 static display_handle_t rpiHandle = {
     .resource = &rpiResource,
     .ops      = &rpi_ops,
+};
+
+#elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+
+static mipi_dsi_device_t dsiDevice = {
+    .virtualChannel = 0,
+    .xferFunc       = BOARD_DSI_Transfer,
+};
+
+static const ili9881c_resource_t ili9881cResource = {
+    .dsiDevice = &dsiDevice,
+};
+
+static display_handle_t ili9881cHandle = {
+    .resource = &ili9881cResource,
+    .ops      = &ili9881c_ops,
 };
 #else
 
@@ -326,6 +355,8 @@ static void BOARD_InitLcdifClock(void)
         .div = 9,
 #elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
         .div = 20,
+#elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+        .div = 9,
 #else
         .div = 15,
 #endif
@@ -385,7 +416,7 @@ static status_t BOARD_InitLcdPanel(void)
 {
     status_t status;
 
-#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
+#if ((DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C))
     const gpio_pin_config_t pinConfig = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
 #endif
 
@@ -401,7 +432,7 @@ static status_t BOARD_InitLcdPanel(void)
         .dsiLanes     = DEMO_MIPI_DSI_LANE_NUM,
     };
 
-#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
+#if ((DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C))
     GPIO_PinInit(BOARD_MIPI_PANEL_POWER_GPIO, BOARD_MIPI_PANEL_POWER_PIN, &pinConfig);
     GPIO_PinInit(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, &pinConfig);
     GPIO_PinInit(BOARD_MIPI_PANEL_RST_GPIO, BOARD_MIPI_PANEL_RST_PIN, &pinConfig);
@@ -417,6 +448,10 @@ static status_t BOARD_InitLcdPanel(void)
 #elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
 
     status = RPI_Init(&rpiHandle, &displayConfig);
+
+#elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+
+    status = ILI9881C_Init(&ili9881cHandle, &displayConfig);
 #else
 
     status = RM68191_Init(&rm68191Handle, &displayConfig);
@@ -424,10 +459,20 @@ static status_t BOARD_InitLcdPanel(void)
 
     if (status == kStatus_Success)
     {
-#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
+#if ((DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C))
         GPIO_PinWrite(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, 1);
 #endif
     }
+
+    return status;
+}
+
+status_t BOARD_StartLcdPanel(void) {
+    status_t status = kStatus_Success;
+
+    #if (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+    status = ILI9881C_Start(&ili9881cHandle);
+    #endif
 
     return status;
 }
@@ -446,6 +491,10 @@ status_t BOARD_DeinitLcdPanel(void) {
     #elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
 
     status = RPI_Deinit(&rpiHandle);
+
+    #elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+
+    status = ILI9881C_Deinit(&ili9881cHandle);
 
     #else
 

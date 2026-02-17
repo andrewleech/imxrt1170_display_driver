@@ -160,10 +160,29 @@ static int s_touchResolutionY;
  * Code
  ******************************************************************************/
 
+static bool s_lvgl_initialized = false;
+static bool s_disp_initialized = false;
+
 void lv_port_pre_init(void) {
 }
 
 void lv_port_disp_init(void) {
+
+    /* Guard against multiple initialization */
+    if (s_disp_initialized) {
+        PRINTF("Display already initialized, skipping\r\n");
+        return;
+    }
+
+    PRINTF("Display config: %dx%d, %d BPP, FB size: %d bytes\r\n",
+           DEMO_BUFFER_WIDTH, DEMO_BUFFER_HEIGHT, DEMO_BUFFER_BYTE_PER_PIXEL, DEMO_FB_SIZE);
+
+    /* Initialize LVGL library */
+    if (!s_lvgl_initialized) {
+        lv_init();
+        s_lvgl_initialized = true;
+        PRINTF("LVGL initialized\r\n");
+    }
 
     BOARD_InitMipiPanelPins();
 
@@ -241,6 +260,9 @@ void lv_port_disp_init(void) {
 
     g_dc.ops->enableLayer(&g_dc, 0);
 
+    /* Start the LCD panel (send Display On command for ILI9881C) */
+    BOARD_StartLcdPanel();
+
     /*-----------------------------------
      * Register the display in LittlevGL
      *----------------------------------*/
@@ -248,6 +270,10 @@ void lv_port_disp_init(void) {
     // Changes in master (v9 development) https://github.com/lvgl/lvgl/issues/4011
 
     lv_display_t * disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);
+
+    // Set color format to RGB565
+    lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
+
     lv_display_set_flush_cb(disp, (void *)DEMO_FlushDisplay);
     lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
 
@@ -274,10 +300,14 @@ void lv_port_disp_init(void) {
             ;
     }
 #endif
+
+    s_disp_initialized = true;
+    PRINTF("Display initialization complete\r\n");
 }
 
 void lv_port_disp_deinit(void) {
     BOARD_DeinitLcdPanel();
+    s_disp_initialized = false;
 }
 
 static void DEMO_BufferSwitchOffCallback(void *param, void *switchOffBuffer) {
