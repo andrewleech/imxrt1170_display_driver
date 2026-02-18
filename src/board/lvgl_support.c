@@ -346,7 +346,18 @@ static void DEMO_WaitBufferSwitchOff(void) {
 
 void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t * color_p) {
 
-    if (!lv_disp_flush_is_last(disp_drv)) {
+    bool is_last = lv_disp_flush_is_last(disp_drv);
+
+    static bool firstFlushDiag = true;
+    if (firstFlushDiag) {
+        firstFlushDiag = false;
+        PRINTF("DEMO_FlushDisplay: is_last=%d color_p=%p\r\n", is_last, color_p);
+        uint16_t *px = (uint16_t *)color_p;
+        PRINTF("  px[0]=%04x px[1]=%04x px[center]=%04x\r\n",
+               px[0], px[1], px[LVGL_BUFFER_WIDTH * LVGL_BUFFER_HEIGHT / 2]);
+    }
+
+    if (!is_last) {
         lv_disp_flush_ready(disp_drv);
         return;
     }
