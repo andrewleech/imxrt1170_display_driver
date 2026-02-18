@@ -92,7 +92,9 @@ class Display:
         """Initialize LVGL graphics library.
 
         This calls the low-level C function to initialize LVGL with the
-        display configuration. Call this after init() to start using LVGL.
+        display configuration, then starts the lv_utils event loop to
+        drive lv_task_handler() and lv_tick_inc() via a hardware timer.
+        Call this after init() to start using LVGL.
 
         Raises:
             OSError: If LVGL initialization fails
@@ -100,14 +102,28 @@ class Display:
         import imxrt1170_disp
         imxrt1170_disp.__init__()
 
+        # Start LVGL event loop: drives lv.task_handler() + lv.tick_inc()
+        # via a periodic machine.Timer interrupt so LVGL actually renders.
+        from lv_utils import event_loop
+        if not event_loop.is_running():
+            self._event_loop = event_loop(timer_id=-1)  # MIMXRT only supports soft timer (-1)
+        else:
+            self._event_loop = None  # Already running, don't own it
+
     def lvgl_deinit(self):
         """Deinitialize LVGL graphics library.
 
-        This calls the low-level C function to clean up LVGL resources.
+        Stops the lv_utils event loop (if started by this instance) and
+        calls the low-level C function to clean up LVGL resources.
         Call this before deinit() to ensure proper cleanup order.
 
         Raises:
             OSError: If LVGL deinitialization fails
         """
+        event_loop = getattr(self, '_event_loop', None)
+        if event_loop is not None:
+            event_loop.deinit()
+            self._event_loop = None
+
         import imxrt1170_disp
         imxrt1170_disp.deinit()
