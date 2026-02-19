@@ -99,8 +99,10 @@ class Display:
         Raises:
             OSError: If LVGL initialization fails
         """
-        import imxrt1170_disp
-        imxrt1170_disp.__init__()
+        # MICROPY_MODULE_BUILTIN_INIT means the C module's __init__ is called
+        # automatically on first import, so we must NOT call it explicitly here
+        # or we get a double init (lv_port_disp_init called twice).
+        import imxrt1170_disp  # noqa: F401 - import triggers auto-init via BUILTIN_INIT
 
         # Start LVGL event loop: drives lv.task_handler() + lv.tick_inc()
         # via a periodic machine.Timer interrupt so LVGL actually renders.

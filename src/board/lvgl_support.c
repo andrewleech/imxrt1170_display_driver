@@ -272,7 +272,8 @@ void lv_port_disp_init(void) {
     lv_display_t * disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);
 
     // Set color format to RGB565
-    lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
+    // ILI9881C via MIPI DSI expects byte-swapped RGB565 (BGR byte order in memory)
+    lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565_SWAPPED);
 
     lv_display_set_flush_cb(disp, (void *)DEMO_FlushDisplay);
     lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
