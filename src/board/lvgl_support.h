@@ -15,7 +15,7 @@
  * Definitions
  ******************************************************************************/
 
-#define DEMO_USE_ROTATE 0
+#define DEMO_USE_ROTATE 1
 
 #define LCD_WIDTH             DEMO_BUFFER_WIDTH
 #define LCD_HEIGHT            DEMO_BUFFER_HEIGHT
