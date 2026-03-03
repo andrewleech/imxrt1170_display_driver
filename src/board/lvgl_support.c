@@ -294,6 +294,11 @@ void lv_port_disp_init(void) {
     PRINTF("Creating LVGL display: %dx%d (panel is %dx%d)\n",
            s_display_width, s_display_height, s_panel_width, s_panel_height);
 
+    /* Set tick callback for bare-metal LVGL operation.
+     * ticks_ms32() returns the MicroPython system tick count in ms. */
+    extern uint32_t ticks_ms32(void);
+    lv_tick_set_cb(ticks_ms32);
+
     lv_display_t * disp = lv_display_create(s_display_width, s_display_height);
     lv_display_set_flush_cb(disp, DEMO_FlushDisplay);
 
