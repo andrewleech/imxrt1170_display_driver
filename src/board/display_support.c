@@ -476,10 +476,8 @@ static void BOARD_SetMipiDsiConfig(void)
      */
     mipiDsiDphyBitClkFreq_Hz = mipiDsiDpiClkFreq_Hz * (24 / PANEL_DSI_LANES);
 
-    // Don't enlarge bit clock for single-lane panels (RPI 7")
-    if (!is_single_lane) {
-        mipiDsiDphyBitClkFreq_Hz = DEMO_MIPI_DPHY_BIT_CLK_ENLARGE(mipiDsiDphyBitClkFreq_Hz);
-    }
+    // Apply 9/8 enlargement for all panels to ensure DSI link has headroom
+    mipiDsiDphyBitClkFreq_Hz = DEMO_MIPI_DPHY_BIT_CLK_ENLARGE(mipiDsiDphyBitClkFreq_Hz);
 
     DSI_GetDphyDefaultConfig(&dphyConfig, mipiDsiDphyBitClkFreq_Hz, mipiDsiTxEscClkFreq_Hz);
 
