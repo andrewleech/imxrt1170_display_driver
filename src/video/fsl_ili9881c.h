@@ -18,7 +18,9 @@
 /*! @brief ILI9881C resource. */
 typedef struct _ili9881c_resource
 {
-    mipi_dsi_device_t *dsiDevice; /*!< MIPI DSI device. */
+    mipi_dsi_device_t *dsiDevice;      /*!< MIPI DSI device. */
+    void (*pullResetPin)(bool pullUp); /*!< HW reset pin control (optional, NULL if not wired). */
+    void (*pullPowerPin)(bool pullUp); /*!< Power pin control (optional, NULL if not wired). */
 } ili9881c_resource_t;
 
 /*******************************************************************************

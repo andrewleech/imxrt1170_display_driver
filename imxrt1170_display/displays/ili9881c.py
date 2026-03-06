@@ -97,6 +97,19 @@ class ILI9881CDisplay(RPI7InchDisplay):
         self._backlight_pwm = None
         self._current_brightness = 100
 
+    def lvgl_init(self):
+        """Initialize LVGL without event_loop.
+
+        The ILI9881C flush callback blocks waiting for the LCDIFv2
+        frame-complete interrupt. Running lv.timer_handler() from a timer
+        interrupt (as lv_utils.event_loop does) causes a deadlock because
+        the LCDIFv2 IRQ cannot fire while already in an interrupt context.
+
+        Instead, the caller must drive lv.timer_handler() and lv.tick_inc()
+        from the main loop.
+        """
+        import imxrt1170_disp  # noqa: F401 - import triggers C-level init
+
     def init(self):
         """Initialize the ILI9881C display hardware.
 

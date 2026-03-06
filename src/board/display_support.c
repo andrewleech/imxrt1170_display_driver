@@ -74,12 +74,15 @@
 
 #elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
 
-#define DEMO_HSW 8
-#define DEMO_HFP 32
-#define DEMO_HBP 32
-#define DEMO_VSW 4
-#define DEMO_VFP 16
-#define DEMO_VBP 14
+/* Linux kernel rpi_5inch timing at 720x1200.
+ * V_total = 1200 + 10 + 20 + 20 = 1250, H_total = 780.
+ * Frame rate = 58.67 MHz / (780 * 1250) = 60.2 Hz. */
+#define DEMO_HSW 20
+#define DEMO_HFP 10
+#define DEMO_HBP 30
+#define DEMO_VSW 20
+#define DEMO_VFP 10
+#define DEMO_VBP 20
 
 #endif
 
@@ -209,7 +212,9 @@ static mipi_dsi_device_t dsiDevice = {
 };
 
 static const ili9881c_resource_t ili9881cResource = {
-    .dsiDevice = &dsiDevice,
+    .dsiDevice    = &dsiDevice,
+    .pullResetPin = NULL,
+    .pullPowerPin = NULL,
 };
 
 static display_handle_t ili9881cHandle = {
@@ -416,7 +421,7 @@ static status_t BOARD_InitLcdPanel(void)
 {
     status_t status;
 
-#if ((DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C))
+#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C)
     const gpio_pin_config_t pinConfig = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
 #endif
 
@@ -432,7 +437,7 @@ static status_t BOARD_InitLcdPanel(void)
         .dsiLanes     = DEMO_MIPI_DSI_LANE_NUM,
     };
 
-#if ((DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C))
+#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C)
     GPIO_PinInit(BOARD_MIPI_PANEL_POWER_GPIO, BOARD_MIPI_PANEL_POWER_PIN, &pinConfig);
     GPIO_PinInit(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, &pinConfig);
     GPIO_PinInit(BOARD_MIPI_PANEL_RST_GPIO, BOARD_MIPI_PANEL_RST_PIN, &pinConfig);
@@ -459,7 +464,7 @@ static status_t BOARD_InitLcdPanel(void)
 
     if (status == kStatus_Success)
     {
-#if ((DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C))
+#if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH) && (DEMO_PANEL != DEMO_PANEL_ILI9881C)
         GPIO_PinWrite(BOARD_MIPI_PANEL_BL_GPIO, BOARD_MIPI_PANEL_BL_PIN, 1);
 #endif
     }
