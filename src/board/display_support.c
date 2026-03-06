@@ -256,7 +256,11 @@ static const dc_fb_lcdifv2_config_t s_dcFbLcdifv2Config = {
     .vfp           = DEMO_VFP,
     .vbp           = DEMO_VBP,
     .polarityFlags = DEMO_LCDIF_POL_FLAGS,
+#if (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+    .lineOrder     = kLCDIFV2_LineOrderBGR,  /* Match ILI9881C NVM BGR color order */
+#else
     .lineOrder     = kLCDIFV2_LineOrderRGB,
+#endif
 /* CM4 is domain 1, CM7 is domain 0. */
 #if (__CORTEX_M <= 4)
     .domain = 1,

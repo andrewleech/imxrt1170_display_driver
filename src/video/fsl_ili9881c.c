@@ -100,8 +100,9 @@ static status_t ILI9881C_InitSequence(mipi_dsi_device_t *dsiDevice)
     status = ILI9881C_SwitchPage(dsiDevice, 1);
     if (status != kStatus_Success) return status;
 
-    ILI9881C_WriteCmd(dsiDevice, 0x22, 0x0A);  /* Panel operation */
-    ILI9881C_WriteCmd(dsiDevice, 0x2E, 0xB4);  /* NL: Gate number = 1200 lines */
+    /* Skip reg 0x22 (panel operation) — keep NVM default 0x30 (BGR mode).
+     * Color order compensated by LCDIF kLCDIFV2_LineOrderBGR.
+     * Skip reg 0x2E (NL) — NVM default 0xC8 (1280 lines). Setting 0xB4 causes dimness. */
     ILI9881C_WriteCmd(dsiDevice, 0x31, 0x00);  /* Display inversion */
     ILI9881C_WriteCmd(dsiDevice, 0x53, 0x35);  /* VCOM1 */
     ILI9881C_WriteCmd(dsiDevice, 0x55, 0x50);  /* VCOM2 */
@@ -191,8 +192,9 @@ status_t ILI9881C_Init(display_handle_t *handle, const display_config_t *config)
         ILI9881C_DelayMs(120);
     }
 
-    /* No register overrides - rely on NVM defaults. The panel is 720x1200
-     * but NVM may have NL for 1280 lines, leaving ~80 black lines at bottom. */
+    /* NVM defaults used. VCOM/VREG/gamma from Linux rpi_5inch init causes
+     * green tint — values don't match this panel. Color order: LCDIF BGR
+     * line order compensates for NVM BGR mode (reg 0x22=0x30). */
 
     /* Exit sleep mode */
     uint8_t sleepOutCmd = MIPI_DCS_EXIT_SLEEP_MODE;
