@@ -74,9 +74,9 @@
 
 #elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
 
-/* Linux kernel rpi_5inch timing at 720x1200.
- * V_total = 1200 + 10 + 20 + 20 = 1250, H_total = 780.
- * Frame rate = 58.67 MHz / (780 * 1250) = 60.2 Hz. */
+/* Standard timing for ILI9881C 720x1200 panel.
+ * H_total = 720 + 20 + 10 + 30 = 780, V_total = 1200 + 20 + 10 + 20 = 1250.
+ * At PLL_528/9 = 58.67 MHz: frame rate = 60.2 Hz. Burst DSI mode. */
 #define DEMO_HSW 20
 #define DEMO_HFP 10
 #define DEMO_HBP 30
@@ -257,7 +257,7 @@ static const dc_fb_lcdifv2_config_t s_dcFbLcdifv2Config = {
     .vbp           = DEMO_VBP,
     .polarityFlags = DEMO_LCDIF_POL_FLAGS,
 #if (DEMO_PANEL == DEMO_PANEL_ILI9881C)
-    .lineOrder     = kLCDIFV2_LineOrderBGR,  /* Match ILI9881C NVM BGR color order */
+    .lineOrder     = kLCDIFV2_LineOrderRGB,  /* Panel reg 0x22=0x0A already does BGR swap */
 #else
     .lineOrder     = kLCDIFV2_LineOrderRGB,
 #endif
@@ -365,7 +365,7 @@ static void BOARD_InitLcdifClock(void)
 #elif (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
         .div = 20,
 #elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
-        .div = 9,
+        .div = 9, /* PLL_528/9 = 58.67 MHz → 60.2 Hz @ 780x1250 */
 #else
         .div = 15,
 #endif
@@ -523,6 +523,8 @@ static void BOARD_SetMipiDsiConfig(void)
                                         .pixelPacket      = kDSI_PixelPacket24Bit,
 #if (DEMO_PANEL == DEMO_PANEL_RASPI_7INCH)
                                         .videoMode        = kDSI_DpiNonBurstWithSyncPulse,
+#elif (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+                                        .videoMode        = kDSI_DpiBurst,
 #else
                                         .videoMode        = kDSI_DpiBurst,
 #endif
@@ -567,7 +569,7 @@ static void BOARD_SetMipiDsiConfig(void)
      * Here the desired DPHY bit clock multiplied by ( 9 / 8 = 1.125) to ensure
      * it is fast enough.
      *
-     * Note that the DSI output pixel is 24bit per pixel.
+     * Note that the DSI output pixel bit depth must match the pixel packet format.
      */
     mipiDsiDphyBitClkFreq_Hz = mipiDsiDpiClkFreq_Hz * (24 / DEMO_MIPI_DSI_LANE_NUM);
 #if (DEMO_PANEL != DEMO_PANEL_RASPI_7INCH)
@@ -576,6 +578,12 @@ static void BOARD_SetMipiDsiConfig(void)
     DSI_GetDphyDefaultConfig(&dphyConfig, mipiDsiDphyBitClkFreq_Hz, mipiDsiTxEscClkFreq_Hz);
 
     mipiDsiDphyBitClkFreq_Hz = DSI_InitDphy(DEMO_MIPI_DSI, &dphyConfig, mipiDsiDphyRefClkFreq_Hz);
+
+    PRINTF("DSI: DPHY PLL freq=%u Hz (0=FAILED), DPI clk=%u Hz, lanes=%d\r\n",
+           mipiDsiDphyBitClkFreq_Hz, mipiDsiDpiClkFreq_Hz, DEMO_MIPI_DSI_LANE_NUM);
+    PRINTF("DSI: Requested DPHY=%u Hz, Ref=%u Hz, EscClk=%u Hz\r\n",
+           mipiDsiDpiClkFreq_Hz * (24 / DEMO_MIPI_DSI_LANE_NUM),
+           mipiDsiDphyRefClkFreq_Hz, mipiDsiTxEscClkFreq_Hz);
 
     /* Init DPI interface. */
     DSI_SetDpiConfig(DEMO_MIPI_DSI, &dpiConfig, DEMO_MIPI_DSI_LANE_NUM, mipiDsiDpiClkFreq_Hz, mipiDsiDphyBitClkFreq_Hz);

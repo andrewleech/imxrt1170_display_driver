@@ -132,6 +132,8 @@ SDK_ALIGN(static uint8_t __attribute__((section(".sdram"))) s_lvglBuffer[1][DEMO
 static SemaphoreHandle_t s_transferDone;
 #else
 static volatile bool s_transferDone;
+static bool s_touchInitialized = false;
+static volatile uint32_t s_vsyncCount = 0;
 #endif
 
 #if DEMO_USE_ROTATE
@@ -192,7 +194,7 @@ void lv_port_disp_init(void) {
 
     MP_STATE_VM(s_frameBuffer_alloc) = m_new0(uint8_t, 2 * DEMO_FB_SIZE + DEMO_FB_ALIGN);
     s_frameBuffer = (uint8_t(*)[DEMO_FB_SIZE]) align_up((uintptr_t)MP_STATE_VM(s_frameBuffer_alloc), DEMO_FB_ALIGN);
-    
+
     #if DEMO_USE_ROTATE
     MP_STATE_VM(s_lvglBuffer_alloc) = m_new0(uint8_t, DEMO_FB_SIZE + DEMO_FB_ALIGN);
     s_lvglBuffer = (uint8_t(*)[DEMO_FB_SIZE]) align_up((uintptr_t)MP_STATE_VM(s_lvglBuffer_alloc), DEMO_FB_ALIGN);
@@ -250,6 +252,54 @@ void lv_port_disp_init(void) {
     s_inactiveFrameBuffer = (void *)s_frameBuffer[0];
     #endif
 
+    /* DIAGNOSTIC: Fill both framebuffers with color blocks (RGB565)
+     * Top third: RED (0xF800), Middle third: GREEN (0x07E0), Bottom third: BLUE (0x001F) */
+    {
+        uint16_t *fb0 = (uint16_t *)s_frameBuffer[0];
+        uint16_t *fb1 = (uint16_t *)s_frameBuffer[1];
+        uint32_t pixels_per_row = DEMO_PANEL_WIDTH;
+        uint32_t total_rows = DEMO_PANEL_HEIGHT;
+        uint32_t third = total_rows / 3;
+        for (uint32_t row = 0; row < total_rows; row++) {
+            uint16_t color;
+            if (row < third)
+                color = 0xF800; /* RED */
+            else if (row < 2 * third)
+                color = 0x07E0; /* GREEN */
+            else
+                color = 0x001F; /* BLUE */
+            for (uint32_t col = 0; col < pixels_per_row; col++) {
+                uint32_t idx = row * pixels_per_row + col;
+                fb0[idx] = color;
+                fb1[idx] = color;
+            }
+        }
+        PRINTF("DIAG: FB[0]=%p FB[1]=%p size=%u (RGB block fill: R/G/B thirds)\r\n",
+               fb0, fb1, DEMO_FB_SIZE);
+    }
+
+    /* Flush both frame buffers from DCache to SDRAM */
+    SCB_CleanInvalidateDCache_by_Addr(s_frameBuffer[0], DEMO_FB_SIZE);
+    SCB_CleanInvalidateDCache_by_Addr(s_frameBuffer[1], DEMO_FB_SIZE);
+
+    /* Readback verification: read from SDRAM (invalidate DCache first) */
+    {
+        SCB_CleanInvalidateDCache_by_Addr(s_frameBuffer[1], 64);
+        volatile uint16_t *fb = (volatile uint16_t *)s_frameBuffer[1];
+        PRINTF("DIAG: FB[1] readback: [0]=%04x [1]=%04x [2]=%04x [719]=%04x [720]=%04x\r\n",
+               fb[0], fb[1], fb[2], fb[719], fb[720]);
+    }
+
+    /* Pre-init LCDIF regs (before setFrameBuffer/enableLayer) */
+    {
+        LCDIFV2_Type *lcdif = LCDIFV2;
+        PRINTF("DIAG-PRE: LCDIF CTRL=0x%08x DISP_SIZE=0x%08x\r\n",
+               lcdif->CTRL, lcdif->DISP_SIZE);
+        PRINTF("DIAG-PRE: L0 DESC1=0x%08x DESC3=0x%08x DESC4=0x%08x DESC5=0x%08x\r\n",
+               lcdif->LAYER[0].CTRLDESCL1, lcdif->LAYER[0].CTRLDESCL3,
+               lcdif->LAYER[0].CTRLDESCL4, lcdif->LAYER[0].CTRLDESCL5);
+    }
+
     /* lvgl starts render in frame buffer 0, so show frame buffer 1 first. */
     g_dc.ops->setFrameBuffer(&g_dc, 0, (void *)s_frameBuffer[1]);
 
@@ -263,6 +313,40 @@ void lv_port_disp_init(void) {
     /* Start the LCD panel (send Display On command for ILI9881C) */
     BOARD_StartLcdPanel();
 
+    /* Post-init LCDIF regs (after setFrameBuffer/enableLayer/startPanel) */
+    {
+        LCDIFV2_Type *lcdif = LCDIFV2;
+        PRINTF("DIAG-POST: L0 DESC1=0x%08x DESC3=0x%08x DESC4=0x%08x DESC5=0x%08x\r\n",
+               lcdif->LAYER[0].CTRLDESCL1, lcdif->LAYER[0].CTRLDESCL3,
+               lcdif->LAYER[0].CTRLDESCL4, lcdif->LAYER[0].CTRLDESCL5);
+        /* DSI DPI interface registers */
+        DSI_HOST_DPI_INTFC_Type *dpi = DSI_HOST_DPI_INTFC;
+        PRINTF("DIAG-POST: DSI PAYLOAD=%u PIXEL_FMT=%u COLOR=%u VIDEO_MODE=%u\r\n",
+               dpi->PIXEL_PAYLOAD_SIZE, dpi->PIXEL_FORMAT,
+               dpi->INTERFACE_COLOR_CODING, dpi->VIDEO_MODE);
+        PRINTF("DIAG-POST: DSI HFP=%u HBP=%u HSA=%u VBP=%u VFP=%u VACTIVE=%u\r\n",
+               dpi->HFP, dpi->HBP, dpi->HSA, dpi->VBP, dpi->VFP, dpi->VACTIVE);
+        PRINTF("DIAG-POST: DSI MULT_PKTS=%u FIFO_SEND=%u\r\n",
+               dpi->ENABLE_MULT_PKTS, dpi->PIXEL_FIFO_SEND_LEVEL);
+        /* DSI error status */
+        PRINTF("DIAG-POST: DSI RX_ERROR=0x%08x APB_IRQ=0x%08x APB_IRQ2=0x%08x\r\n",
+               DSI_HOST->RX_ERROR_STATUS,
+               DSI_HOST_APB_PKT_IF->IRQ_STATUS2,  /* Read STATUS2 first (per docs) */
+               DSI_HOST_APB_PKT_IF->IRQ_STATUS);   /* Then STATUS (clears both) */
+        /* VIDEO_MUX register — verify LCDIFv2 is routed to DSI */
+        PRINTF("DIAG-POST: VIDEO_MUX_CTRL=0x%08x\r\n",
+               VIDEO_MUX->VID_MUX_CTRL.RW);
+    }
+
+    /* Wait 500ms and check VSYNC frame count */
+    {
+        uint32_t count1 = s_vsyncCount;
+        VIDEO_DelayMs(500);
+        uint32_t count2 = s_vsyncCount;
+        PRINTF("DIAG: VSYNC count: %u -> %u in 500ms (%u frames, ~%u Hz)\r\n",
+               count1, count2, count2 - count1, (count2 - count1) * 2);
+    }
+
     /*-----------------------------------
      * Register the display in LittlevGL
      *----------------------------------*/
@@ -271,8 +355,12 @@ void lv_port_disp_init(void) {
 
     lv_display_t * disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);
 
-    // Set color format to RGB565
+    // Set color format to match framebuffer pixel format
+    #if DEMO_USE_XRGB8888
+    lv_display_set_color_format(disp, LV_COLOR_FORMAT_XRGB8888);
+    #else
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
+    #endif
 
     lv_display_set_flush_cb(disp, (void *)DEMO_FlushDisplay);
 
@@ -318,6 +406,7 @@ static void DEMO_BufferSwitchOffCallback(void *param, void *switchOffBuffer) {
     #else
     s_transferDone = true;
     #endif
+    s_vsyncCount++;
 
     #if DEMO_USE_ROTATE
     s_inactiveFrameBuffer = switchOffBuffer;
@@ -347,14 +436,7 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
 
     bool is_last = lv_disp_flush_is_last(disp_drv);
 
-    static bool firstFlushDiag = true;
-    if (firstFlushDiag) {
-        firstFlushDiag = false;
-        PRINTF("DEMO_FlushDisplay: is_last=%d color_p=%p\r\n", is_last, color_p);
-        uint16_t *px = (uint16_t *)color_p;
-        PRINTF("  px[0]=%04x px[1]=%04x px[center]=%04x\r\n",
-               px[0], px[1], px[LVGL_BUFFER_WIDTH * LVGL_BUFFER_HEIGHT / 2]);
-    }
+    /* No PRINTF in flush callback — USB CDC output can block and deadlock. */
 
     if (!is_last) {
         lv_disp_flush_ready(disp_drv);
@@ -451,18 +533,16 @@ void DEMO_FlushDisplay(lv_display_t * disp_drv, const lv_area_t * area, uint8_t 
 
     #else /* DEMO_USE_ROTATE */
 
-#if __CORTEX_M == 4
-    L1CACHE_CleanInvalidateSystemCacheByRange((uint32_t)color_p, DEMO_FB_SIZE);
-#else
+    /* Direct mode: color_p points into one of the two framebuffers.
+     * Flush DCache so LCDIF DMA reads the rendered pixels from SDRAM. */
     SCB_CleanInvalidateDCache_by_Addr(color_p, DEMO_FB_SIZE);
-#endif
 
     g_dc.ops->setFrameBuffer(&g_dc, 0, (void *)color_p);
 
+    /* Wait for the buffer switch (VSYNC) before LVGL writes to the
+     * other buffer, so we don't tear. */
     DEMO_WaitBufferSwitchOff();
 
-    /* IMPORTANT!!!
-     * Inform the graphics library that you are ready with the flushing*/
     lv_disp_flush_ready(disp_drv);
     #endif /* DEMO_USE_ROTATE */
 }
@@ -544,6 +624,7 @@ static void DEMO_InitTouch(void)
         return;
     }
 
+    s_touchInitialized = true;
     GT911_GetResolution(&s_touchHandle, &s_touchResolutionX, &s_touchResolutionY);
 }
 
@@ -551,6 +632,11 @@ static void DEMO_InitTouch(void)
 static void DEMO_ReadTouch(lv_indev_t * drv, lv_indev_data_t * data) {
     static int touch_x = 0;
     static int touch_y = 0;
+
+    if (!s_touchInitialized) {
+        data->state = LV_INDEV_STATE_REL;
+        return;
+    }
 
     if (kStatus_Success == GT911_GetSingleTouch(&s_touchHandle, &touch_x, &touch_y))
     {

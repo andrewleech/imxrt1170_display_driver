@@ -85,7 +85,7 @@ class ILI9881CDisplay(RPI7InchDisplay):
         """Initialize ILI9881C display configuration.
 
         Sets up the display with ILI9881C specifications:
-        - Resolution: 720x1200 pixels
+        - Resolution: 720x1280 pixels
         - Color depth: 24-bit RGB (supports 16-bit mode via LVGL)
         - Backlight: PWM control
         """
