@@ -24,6 +24,7 @@ processor_version: 0.9.6
 #include "fsl_common.h"
 #include "fsl_iomuxc.h"
 #include "pin_mux.h"
+#include "display_support.h"
 
 /* FUNCTION ************************************************************************************************************
  * 
@@ -118,6 +119,20 @@ void BOARD_InitI2CPins(void)
                                                  Pull / Keep Select Field: Pull Disable, Highz
                                                  Pull Up / Down Config. Field: Weak pull down
                                                  Open Drain Field: Enabled */
+#elif (DEMO_PANEL_ILI9881C == DEMO_PANEL)
+
+  IOMUXC_SetPinMux(
+      IOMUXC_GPIO_AD_32_LPI2C1_SCL,             /* GPIO_AD_32 is configured as LPI2C1_SCL */
+      1U);                                       /* Software Input On Field: Force input path */
+  IOMUXC_SetPinMux(
+      IOMUXC_GPIO_AD_33_LPI2C1_SDA,             /* GPIO_AD_33 is configured as LPI2C1_SDA */
+      1U);                                       /* Software Input On Field: Force input path */
+  IOMUXC_SetPinConfig(
+      IOMUXC_GPIO_AD_32_LPI2C1_SCL,             /* GPIO_AD_32 PAD functional properties : */
+      0x20U);                                    /* Open Drain Field: Enabled */
+  IOMUXC_SetPinConfig(
+      IOMUXC_GPIO_AD_33_LPI2C1_SDA,             /* GPIO_AD_33 PAD functional properties : */
+      0x20U);                                    /* Open Drain Field: Enabled */
 #endif
 }
 

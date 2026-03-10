@@ -609,6 +609,14 @@ static void DEMO_InitTouch(void)
     const gpio_pin_config_t resetPinConfig = {
         .direction = kGPIO_DigitalOutput, .outputLogic = 0, .interruptMode = kGPIO_NoIntmode
     };
+
+#if (DEMO_PANEL == DEMO_PANEL_ILI9881C)
+    /* ILI9881C touch RST/INT use GPIO_SNVS pins which default to SNVS tamper
+     * function. Must mux them to ALT5 (GPIO13) before GPIO_PinInit works. */
+    IOMUXC_SNVS->SW_MUX_CTL_PAD_GPIO_SNVS_01_DIG = 0x05U;  /* Touch RST → GPIO13_IO04 */
+    IOMUXC_SNVS->SW_MUX_CTL_PAD_GPIO_SNVS_03_DIG = 0x05U;  /* Touch INT → GPIO13_IO06 */
+#endif
+
     #ifdef BOARD_MIPI_PANEL_TOUCH_INT_GPIO
     GPIO_PinInit(BOARD_MIPI_PANEL_TOUCH_INT_GPIO, BOARD_MIPI_PANEL_TOUCH_INT_PIN, &resetPinConfig);
     #endif

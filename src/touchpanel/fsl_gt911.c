@@ -85,75 +85,90 @@ status_t GT911_Init(gt911_handle_t *handle, const gt911_config_t *config)
     handle->timeDelayMsFunc  = config->timeDelayMsFunc;
     handle->pullResetPinFunc = config->pullResetPinFunc;
 
-    /* Reset the panel and set the I2C address mode. */
-    config->intPinFunc(kGT911_IntPinPullDown);
-    config->pullResetPinFunc(false);
-
-    /* >= 10ms. */
-    handle->timeDelayMsFunc(20);
-
-    if (kGT911_I2cAddrAny == config->i2cAddrMode)
+    /* Try reading the device ID without reset first (GT928 may already be running). */
+    if (kGT911_I2cAddrMode1 == config->i2cAddrMode)
     {
-        config->pullResetPinFunc(true);
-
-        /* >= 55ms */
-        handle->timeDelayMsFunc(55);
-
-        config->intPinFunc(kGT911_IntPinInput);
-
-        /* Try address 0 */
+        handle->i2cAddr = GT911_I2C_ADDRESS1;
+    }
+    else
+    {
         handle->i2cAddr = GT911_I2C_ADDRESS0;
-        status = handle->I2C_ReceiveFunc(handle->i2cAddr, GT911_REG_ID, GT911_REG_ADDR_SIZE, (uint8_t *)&deviceID, 4);
+    }
 
-        if (kStatus_Success != status)
+    status = handle->I2C_ReceiveFunc(handle->i2cAddr, GT911_REG_ID, GT911_REG_ADDR_SIZE, (uint8_t *)&deviceID, 4);
+
+    if (kStatus_Success != status || deviceID == 0U)
+    {
+        /* Device not responding or ID not ready — do full reset sequence. */
+        config->intPinFunc(kGT911_IntPinPullDown);
+        config->pullResetPinFunc(false);
+
+        /* >= 10ms. */
+        handle->timeDelayMsFunc(20);
+
+        if (kGT911_I2cAddrAny == config->i2cAddrMode)
         {
-            /* Try address 1 */
-            handle->i2cAddr = GT911_I2C_ADDRESS1;
-            status =
-                handle->I2C_ReceiveFunc(handle->i2cAddr, GT911_REG_ID, GT911_REG_ADDR_SIZE, (uint8_t *)&deviceID, 4);
+            config->pullResetPinFunc(true);
 
+            /* >= 55ms */
+            handle->timeDelayMsFunc(55);
+
+            config->intPinFunc(kGT911_IntPinInput);
+
+            /* Try address 0 */
+            handle->i2cAddr = GT911_I2C_ADDRESS0;
+            status = handle->I2C_ReceiveFunc(handle->i2cAddr, GT911_REG_ID, GT911_REG_ADDR_SIZE, (uint8_t *)&deviceID, 4);
+
+            if (kStatus_Success != status)
+            {
+                /* Try address 1 */
+                handle->i2cAddr = GT911_I2C_ADDRESS1;
+                status =
+                    handle->I2C_ReceiveFunc(handle->i2cAddr, GT911_REG_ID, GT911_REG_ADDR_SIZE, (uint8_t *)&deviceID, 4);
+
+                if (kStatus_Success != status)
+                {
+                    return status;
+                }
+            }
+        }
+        else
+        {
+            if (kGT911_I2cAddrMode1 == config->i2cAddrMode)
+            {
+                config->intPinFunc(kGT911_IntPinPullUp);
+                handle->i2cAddr = GT911_I2C_ADDRESS1;
+            }
+            else
+            {
+                handle->i2cAddr = GT911_I2C_ADDRESS0;
+            }
+
+            /* >= 100us */
+            handle->timeDelayMsFunc(1);
+
+            config->pullResetPinFunc(true);
+
+            /* >= 5ms */
+            handle->timeDelayMsFunc(5);
+
+            config->intPinFunc(kGT911_IntPinPullDown);
+
+            /* >= 50ms */
+            handle->timeDelayMsFunc(50);
+
+            config->intPinFunc(kGT911_IntPinInput);
+
+            status = handle->I2C_ReceiveFunc(handle->i2cAddr, GT911_REG_ID, GT911_REG_ADDR_SIZE, (uint8_t *)&deviceID, 4);
             if (kStatus_Success != status)
             {
                 return status;
             }
         }
     }
-    else
-    {
-        if (kGT911_I2cAddrMode1 == config->i2cAddrMode)
-        {
-            config->intPinFunc(kGT911_IntPinPullUp);
-            handle->i2cAddr = GT911_I2C_ADDRESS1;
-        }
-        else
-        {
-            handle->i2cAddr = GT911_I2C_ADDRESS0;
-        }
 
-        /* >= 100us */
-        handle->timeDelayMsFunc(1);
-
-        config->pullResetPinFunc(true);
-
-        /* >= 5ms */
-        handle->timeDelayMsFunc(5);
-
-        config->intPinFunc(kGT911_IntPinPullDown);
-
-        /* >= 50ms */
-        handle->timeDelayMsFunc(50);
-
-        config->intPinFunc(kGT911_IntPinInput);
-
-        status = handle->I2C_ReceiveFunc(handle->i2cAddr, GT911_REG_ID, GT911_REG_ADDR_SIZE, (uint8_t *)&deviceID, 4);
-        if (kStatus_Success != status)
-        {
-            return status;
-        }
-    }
-
-    /* Verify the device. */
-    if (deviceID != 0x00313139U)
+    /* Verify the device - accept GT911 ("911" = 0x00313139) or GT928 ("928" = 0x00383239). */
+    if (deviceID != 0x00313139U && deviceID != 0x00383239U)
     {
         return kStatus_Fail;
     }
@@ -166,32 +181,36 @@ status_t GT911_Init(gt911_handle_t *handle, const gt911_config_t *config)
         return status;
     }
 
-    /*
-     * GT911 driver gets the original firmware from touch panel control IC, modify
-     * the configuration, then set it to the IC again. The original firmware
-     * read from the touch IC must be correct, otherwise setting wrong firmware
-     * to the touch IC will break it.
-     */
-    if (true != GT911_VerifyFirmware(gt911Config))
-    {
-        return kStatus_Fail;
-    }
-
     handle->resolutionX = ((uint16_t)gt911Config[GT911_REG_XH - GT911_CONFIG_ADDR]) << 8U;
     handle->resolutionX += gt911Config[GT911_REG_XL - GT911_CONFIG_ADDR];
     handle->resolutionY = ((uint16_t)gt911Config[GT911_REG_YH - GT911_CONFIG_ADDR]) << 8U;
     handle->resolutionY += gt911Config[GT911_REG_YL - GT911_CONFIG_ADDR];
 
-    gt911Config[GT911_REG_TOUCH_NUM - GT911_CONFIG_ADDR] = (config->touchPointNum) & 0x0FU;
+    /*
+     * GT911 driver gets the original firmware from touch panel control IC, modify
+     * the configuration, then set it to the IC again. The original firmware
+     * read from the touch IC must be correct, otherwise setting wrong firmware
+     * to the touch IC will break it.
+     *
+     * For GT928 or other variants, the firmware checksum may not match the
+     * GT911 format. In that case, skip the config write-back and use the
+     * resolution read above. Touch reading will still work.
+     */
+    if (true == GT911_VerifyFirmware(gt911Config))
+    {
+        gt911Config[GT911_REG_TOUCH_NUM - GT911_CONFIG_ADDR] = (config->touchPointNum) & 0x0FU;
 
-    gt911Config[GT911_REG_MODULE_SWITCH1 - GT911_CONFIG_ADDR] &= (uint8_t)(~GT911_MODULE_SWITCH_INT_MASK);
-    gt911Config[GT911_REG_MODULE_SWITCH1 - GT911_CONFIG_ADDR] |= (uint8_t)(config->intTrigMode);
+        gt911Config[GT911_REG_MODULE_SWITCH1 - GT911_CONFIG_ADDR] &= (uint8_t)(~GT911_MODULE_SWITCH_INT_MASK);
+        gt911Config[GT911_REG_MODULE_SWITCH1 - GT911_CONFIG_ADDR] |= (uint8_t)(config->intTrigMode);
 
-    gt911Config[GT911_CONFIG_SIZE - 2U] = GT911_GetFirmwareCheckSum(gt911Config);
-    gt911Config[GT911_CONFIG_SIZE - 1U] = 1U; /* Mark the firmware as valid. */
+        gt911Config[GT911_CONFIG_SIZE - 2U] = GT911_GetFirmwareCheckSum(gt911Config);
+        gt911Config[GT911_CONFIG_SIZE - 1U] = 1U; /* Mark the firmware as valid. */
 
-    return handle->I2C_SendFunc(handle->i2cAddr, GT911_CONFIG_ADDR, GT911_REG_ADDR_SIZE, gt911Config,
-                                GT911_CONFIG_SIZE);
+        status = handle->I2C_SendFunc(handle->i2cAddr, GT911_CONFIG_ADDR, GT911_REG_ADDR_SIZE, gt911Config,
+                                      GT911_CONFIG_SIZE);
+    }
+
+    return status;
 }
 
 status_t GT911_Deinit(gt911_handle_t *handle)

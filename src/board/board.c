@@ -7,6 +7,7 @@
 
 #include "fsl_common.h"
 #include "board.h"
+#include "pin_mux.h"
 #if defined(SDK_I2C_BASED_COMPONENT_USED) && SDK_I2C_BASED_COMPONENT_USED
 #include "fsl_lpi2c.h"
 #endif /* SDK_I2C_BASED_COMPONENT_USED */
@@ -230,6 +231,8 @@ void BOARD_MIPIPanelTouch_I2C_Init(void)
     };
 
     CLOCK_SetRootClock(BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_ROOT, &lpi2cClockConfig);
+
+    BOARD_InitI2CPins();
 
     BOARD_LPI2C_Init(BOARD_MIPI_PANEL_TOUCH_I2C_BASEADDR,
                      CLOCK_GetRootClockFreq(BOARD_MIPI_PANEL_TOUCH_I2C_CLOCK_ROOT));

@@ -8,6 +8,11 @@
 #ifndef _BOARD_H_
 #define _BOARD_H_
 
+/* Import board-specific pin overrides before default definitions below. */
+#if __has_include("display_board_config.h")
+#include "display_board_config.h"
+#endif
+
 #include "clock_config.h"
 #include "fsl_common.h"
 #include "fsl_gpio.h"
