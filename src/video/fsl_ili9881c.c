@@ -66,23 +66,27 @@ static status_t ILI9881C_WriteCmd(mipi_dsi_device_t *dsiDevice, uint8_t cmd, uin
 }
 
 /**
- * Send the full panel initialization sequence.
+ * Send the panel initialization sequence.
  *
- * Based on the rpi_5inch panel from the mainline Linux panel-ilitek-ili9881c.c
- * driver. This is a 5" 720x1280 2-lane MIPI DSI ILI9881C panel (62x110mm
- * active area) matching the WF50DTYA3MNG10000 module specifications.
+ * Minimal init found via bottom-up search (tests 58-60).
  *
- * The sequence configures:
- * - Page 3: GIP (Gate-In-Panel) timing and signal mapping
- * - Page 4: Power control and voltage settings
- * - Page 1: Panel operation, VCOM, VREG, gamma correction
- * - Page 0: Return to default page for normal operation
+ * NVM (factory-programmed OTP) loads on every power cycle. Our writes
+ * override specific values in volatile SRAM. Only override what's needed.
+ *
+ * Required overrides (everything else from NVM):
+ * - Page 3 GIP: NVM GIP broken at 1280 lines (test 58: vertical bars)
+ * - P1 0x22: BGR+SS+DSI video mode (NVM=0x30, wrong for our HW)
+ * - P1 0x2E: NL=1280 gate lines (NVM=0xB4/1200)
+ * - P1 0x50/51: VREG=0xB7 (NVM VREG too low for kd050 GIP, test 59: blank)
+ * - P1 0x53/55: VCOM left at NVM factory default (test 60: looks great)
  */
 static status_t ILI9881C_InitSequence(mipi_dsi_device_t *dsiDevice)
 {
     status_t status;
 
-    /* Page 3: GIP — kd050hdfia020 (Startek KD050HDFIA020) variant */
+    /* Page 3: GIP timing from kd050hdfia020 — enabled for test 60.
+     * Test 58: NVM GIP broken (vertical bars). Test 59: VREG alone = blank.
+     * GIP is required. */
     status = ILI9881C_SwitchPage(dsiDevice, 3);
     if (status != kStatus_Success) return status;
 
@@ -154,7 +158,6 @@ static status_t ILI9881C_InitSequence(mipi_dsi_device_t *dsiDevice)
     ILI9881C_WriteCmd(dsiDevice, 0x42, 0x00);
     ILI9881C_WriteCmd(dsiDevice, 0x43, 0x00);
     ILI9881C_WriteCmd(dsiDevice, 0x44, 0x00);
-    /* GIP signal routing */
     ILI9881C_WriteCmd(dsiDevice, 0x50, 0x01);
     ILI9881C_WriteCmd(dsiDevice, 0x51, 0x23);
     ILI9881C_WriteCmd(dsiDevice, 0x52, 0x45);
@@ -169,7 +172,6 @@ static status_t ILI9881C_InitSequence(mipi_dsi_device_t *dsiDevice)
     ILI9881C_WriteCmd(dsiDevice, 0x5B, 0xAB);
     ILI9881C_WriteCmd(dsiDevice, 0x5C, 0xCD);
     ILI9881C_WriteCmd(dsiDevice, 0x5D, 0xEF);
-    /* GIP output mapping */
     ILI9881C_WriteCmd(dsiDevice, 0x5E, 0x11);
     ILI9881C_WriteCmd(dsiDevice, 0x5F, 0x01);
     ILI9881C_WriteCmd(dsiDevice, 0x60, 0x00);
@@ -206,7 +208,6 @@ static status_t ILI9881C_InitSequence(mipi_dsi_device_t *dsiDevice)
     ILI9881C_WriteCmd(dsiDevice, 0x7F, 0x07);
     ILI9881C_WriteCmd(dsiDevice, 0x80, 0x02);
     ILI9881C_WriteCmd(dsiDevice, 0x81, 0x02);
-    /* 0x82 skipped in kd050hdfia020 */
     ILI9881C_WriteCmd(dsiDevice, 0x83, 0x02);
     ILI9881C_WriteCmd(dsiDevice, 0x84, 0x02);
     ILI9881C_WriteCmd(dsiDevice, 0x85, 0x02);
@@ -216,34 +217,53 @@ static status_t ILI9881C_InitSequence(mipi_dsi_device_t *dsiDevice)
     ILI9881C_WriteCmd(dsiDevice, 0x89, 0x02);
     ILI9881C_WriteCmd(dsiDevice, 0x8A, 0x02);
 
-    /* Page 4: Power control — kd050hdfia020 values */
+#if 0  /* TEST 59+: Page 4 power — enable if needed */
+    /* Page 4: Datasheet defaults (p120) for power control. */
     status = ILI9881C_SwitchPage(dsiDevice, 4);
     if (status != kStatus_Success) return status;
 
-    ILI9881C_WriteCmd(dsiDevice, 0x6C, 0x15);
-    ILI9881C_WriteCmd(dsiDevice, 0x6E, 0x2A);
-    ILI9881C_WriteCmd(dsiDevice, 0x6F, 0x33);
-    ILI9881C_WriteCmd(dsiDevice, 0x3A, 0x94);
-    ILI9881C_WriteCmd(dsiDevice, 0x8D, 0x15);
-    ILI9881C_WriteCmd(dsiDevice, 0x87, 0xBA);
-    ILI9881C_WriteCmd(dsiDevice, 0x26, 0x76);
-    ILI9881C_WriteCmd(dsiDevice, 0xB2, 0xD1);
-    ILI9881C_WriteCmd(dsiDevice, 0xB5, 0x06);
+    ILI9881C_WriteCmd(dsiDevice, 0x69, 0xD7);  /* Power Control 1 */
+    ILI9881C_WriteCmd(dsiDevice, 0x6C, 0x15);  /* VCORE */
+    ILI9881C_WriteCmd(dsiDevice, 0x6E, 0x6A);  /* Power Control 2 / VGH clamp */
+    ILI9881C_WriteCmd(dsiDevice, 0x6F, 0x34);  /* Power Control 3 / VGH+VGL step-up */
+    ILI9881C_WriteCmd(dsiDevice, 0x8D, 0x14);  /* Power Control 4 / VGL clamp */
+#endif /* Page 4 power */
 
-    /* Page 1: Panel settings + gamma — kd050hdfia020 values */
+    /* Page 1: NL + panel mode + VREG (test 60) */
     status = ILI9881C_SwitchPage(dsiDevice, 1);
     if (status != kStatus_Success) return status;
 
-    ILI9881C_WriteCmd(dsiDevice, 0x22, 0x0A);  /* BGR, SS, DSI video mode */
+    ILI9881C_WriteCmd(dsiDevice, 0x22, 0x0A);  /* BGR, SS, DSI video mode (required — NVM=0x30) */
+    ILI9881C_WriteCmd(dsiDevice, 0x2E, 0xC8);  /* NL=1280 gate lines (required — NVM=0xB4/1200) */
+
+#if 0  /* TEST 62: Column inversion — enable only if wrong inv behaviour */
     ILI9881C_WriteCmd(dsiDevice, 0x31, 0x00);  /* Column inversion */
-    ILI9881C_WriteCmd(dsiDevice, 0x53, 0x90);  /* VCOM1 */
-    ILI9881C_WriteCmd(dsiDevice, 0x55, 0xA2);  /* VCOM2 */
-    ILI9881C_WriteCmd(dsiDevice, 0x50, 0xB7);  /* VREG1 */
-    ILI9881C_WriteCmd(dsiDevice, 0x51, 0xB7);  /* VREG2 */
-    ILI9881C_WriteCmd(dsiDevice, 0x60, 0x22);  /* Source timing */
-    ILI9881C_WriteCmd(dsiDevice, 0x61, 0x00);
-    ILI9881C_WriteCmd(dsiDevice, 0x62, 0x19);
-    ILI9881C_WriteCmd(dsiDevice, 0x63, 0x10);
+#endif
+
+    /* VREG — added for test 59 (test 58 had vertical bars + whining + shutdown) */
+    ILI9881C_WriteCmd(dsiDevice, 0x50, 0xB7);  /* VREG1OUT */
+    ILI9881C_WriteCmd(dsiDevice, 0x51, 0xB7);  /* VREG2OUT */
+
+#if 0  /* VCOM — NVM factory-calibrated value used. Only override if needed. */
+    ILI9881C_WriteCmd(dsiDevice, 0x53, 0x96);  /* VCOM1 */
+    ILI9881C_WriteCmd(dsiDevice, 0x55, 0x96);  /* VCOM2 */
+#endif
+
+#if 0  /* Pump clocks — datasheet defaults */
+    ILI9881C_WriteCmd(dsiDevice, 0x40, 0x33);  /* Pump clock A */
+    ILI9881C_WriteCmd(dsiDevice, 0x41, 0x33);  /* Pump clock B */
+    ILI9881C_WriteCmd(dsiDevice, 0x42, 0x44);  /* Pump clock C */
+    ILI9881C_WriteCmd(dsiDevice, 0x43, 0x55);  /* Pump clock D */
+#endif
+
+#if 0  /* Source timing — datasheet defaults */
+    ILI9881C_WriteCmd(dsiDevice, 0x60, 0x14);  /* SDT */
+    ILI9881C_WriteCmd(dsiDevice, 0x61, 0x00);  /* CRT */
+    ILI9881C_WriteCmd(dsiDevice, 0x62, 0x19);  /* EQT */
+    ILI9881C_WriteCmd(dsiDevice, 0x63, 0x10);  /* PCT */
+#endif
+
+#if 0  /* Gamma — kd050hdfia020 */
     /* Positive gamma */
     ILI9881C_WriteCmd(dsiDevice, 0xA0, 0x08);
     ILI9881C_WriteCmd(dsiDevice, 0xA1, 0x1A);
@@ -265,6 +285,7 @@ static status_t ILI9881C_InitSequence(mipi_dsi_device_t *dsiDevice)
     ILI9881C_WriteCmd(dsiDevice, 0xB1, 0x54);
     ILI9881C_WriteCmd(dsiDevice, 0xB2, 0x67);
     ILI9881C_WriteCmd(dsiDevice, 0xB3, 0x39);
+
     /* Negative gamma */
     ILI9881C_WriteCmd(dsiDevice, 0xC0, 0x08);
     ILI9881C_WriteCmd(dsiDevice, 0xC1, 0x1A);
@@ -286,14 +307,11 @@ static status_t ILI9881C_InitSequence(mipi_dsi_device_t *dsiDevice)
     ILI9881C_WriteCmd(dsiDevice, 0xD1, 0x54);
     ILI9881C_WriteCmd(dsiDevice, 0xD2, 0x67);
     ILI9881C_WriteCmd(dsiDevice, 0xD3, 0x39);
+#endif /* Gamma */
 
-    /* Page 0: final settings */
+    /* Page 0: return to default page */
     status = ILI9881C_SwitchPage(dsiDevice, 0);
     if (status != kStatus_Success) return status;
-
-    /* Tearing effect + pixel format from kd050hdfia020 */
-    ILI9881C_WriteCmd(dsiDevice, 0x35, 0x00);
-    ILI9881C_WriteCmd(dsiDevice, 0x3A, 0x07);  /* 24-bit pixel format */
 
     return kStatus_Success;
 }
@@ -304,7 +322,7 @@ status_t ILI9881C_Init(display_handle_t *handle, const display_config_t *config)
     mipi_dsi_device_t *dsiDevice = resource->dsiDevice;
     status_t status;
     /* Verify resolution */
-    if (config->resolution != FSL_VIDEO_RESOLUTION(720, 1200))
+    if (config->resolution != FSL_VIDEO_RESOLUTION(720, 1280))
     {
         return kStatus_InvalidArgument;
     }
@@ -322,21 +340,19 @@ status_t ILI9881C_Init(display_handle_t *handle, const display_config_t *config)
         resource->pullResetPin(true);   /* Release reset */
         ILI9881C_DelayMs(120);          /* Wait for NVM load after HW reset */
     } else {
-        /* No HW reset — use SW reset instead */
+        /* Skip SW reset — we write all datasheet defaults explicitly in
+         * ILI9881C_InitSequence(), so NVM values get overridden anyway.
+         * SW reset via GenericWrite/DCS_Write hangs the DSI link. */
         ILI9881C_DelayMs(10);
-        uint8_t swResetCmd = 0x01;
-        status = MIPI_DSI_GenericWrite(dsiDevice, &swResetCmd, 1);
-        ILI9881C_PRINTF("ILI9881C: SW reset status=%d\r\n", (int)status);
-        ILI9881C_DelayMs(120);
     }
 
-    /* Full kd050hdfia020 init: GIP(Page3) + Power(Page4) + Settings+Gamma(Page1) + Page0 */
+    /* Minimal init: GIP + NL + panel mode + VREG + VCOM. No Page4/gamma/pump/SDT. */
     status = ILI9881C_InitSequence(dsiDevice);
     if (status != kStatus_Success) return status;
 
-    /* Exit sleep mode */
+    /* Exit sleep mode — use DCS write for standard DCS commands */
     uint8_t sleepOutCmd = MIPI_DCS_EXIT_SLEEP_MODE;
-    MIPI_DSI_GenericWrite(dsiDevice, &sleepOutCmd, 1);
+    MIPI_DSI_DCS_Write(dsiDevice, &sleepOutCmd, 1);
 
     /* Wait for display to wake up (spec requires 120ms after sleep out) */
     ILI9881C_DelayMs(120);
@@ -351,14 +367,14 @@ status_t ILI9881C_Deinit(display_handle_t *handle)
     const ili9881c_resource_t *resource = (const ili9881c_resource_t *)(handle->resource);
     mipi_dsi_device_t *dsiDevice = resource->dsiDevice;
 
-    /* Turn off display */
+    /* Turn off display — use DCS write for standard DCS commands */
     uint8_t displayOffCmd = MIPI_DCS_SET_DISPLAY_OFF;
-    MIPI_DSI_GenericWrite(dsiDevice, &displayOffCmd, 1);
+    MIPI_DSI_DCS_Write(dsiDevice, &displayOffCmd, 1);
     ILI9881C_DelayMs(20);
 
     /* Enter sleep mode */
     uint8_t sleepInCmd = MIPI_DCS_ENTER_SLEEP_MODE;
-    MIPI_DSI_GenericWrite(dsiDevice, &sleepInCmd, 1);
+    MIPI_DSI_DCS_Write(dsiDevice, &sleepInCmd, 1);
     ILI9881C_DelayMs(120);
 
     return kStatus_Success;
@@ -372,7 +388,7 @@ status_t ILI9881C_Start(display_handle_t *handle)
     mipi_dsi_device_t *dsiDevice = resource->dsiDevice;
 
     uint8_t displayOnCmd = MIPI_DCS_SET_DISPLAY_ON;
-    status_t status = MIPI_DSI_GenericWrite(dsiDevice, &displayOnCmd, 1);
+    status_t status = MIPI_DSI_DCS_Write(dsiDevice, &displayOnCmd, 1);
     ILI9881C_PRINTF("ILI9881C: Display ON (in Start, after HS) status=%d\r\n", (int)status);
 
     return status;
@@ -385,7 +401,7 @@ status_t ILI9881C_Stop(display_handle_t *handle)
 
     /* Turn off display */
     uint8_t displayOffCmd = MIPI_DCS_SET_DISPLAY_OFF;
-    MIPI_DSI_GenericWrite(dsiDevice, &displayOffCmd, 1);
+    MIPI_DSI_DCS_Write(dsiDevice, &displayOffCmd, 1);
     ILI9881C_DelayMs(20);
 
     return kStatus_Success;
