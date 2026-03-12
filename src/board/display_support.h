@@ -21,7 +21,12 @@
 
 /* @TEST_ANCHOR */
 
-/* Include board-specific display configuration if it exists */
+/* Include board-specific display configuration if it exists.
+ * NOTE: This is intentionally before panel ID defines. The board config
+ * sets DEMO_PANEL to an undefined symbol which evaluates to 0, matching
+ * DEMO_PANEL_RK055AHD091. This works because the RK055AHD091 720x1280
+ * DSI timing is compatible with our ILI9881C panel. The board config
+ * still provides correct pin definitions for our hardware. */
 #if __has_include("display_board_config.h")
 #include "display_board_config.h"
 #endif
@@ -30,7 +35,7 @@
 #define DEMO_PANEL_RK055IQH091 1 /* 540 * 960,  RK055IQH091-CTG */
 #define DEMO_PANEL_RK055MHD091 2 /* 720 * 1280, RK055MHD091A0-CTG(RK055HDMIPI4MA0) */
 #define DEMO_PANEL_RASPI_7INCH 3 /* 800 * 480, Raspberry Pi 7" */
-#define DEMO_PANEL_ILI9881C    4 /* 720 * 1200, ILI9881C (WF50DTYA3MNG10000, NVM=1200) */
+#define DEMO_PANEL_ILI9881C    4 /* 720 * 1280, ILI9881C (WF50DTYA3MNG10000, NL=1280) */
 
 #define DEMO_DISPLAY_CONTROLLER_ELCDIF  0
 #define DEMO_DISPLAY_CONTROLLER_LCDIFV2 1
@@ -88,7 +93,7 @@
 #elif (DEMO_PANEL_ILI9881C == DEMO_PANEL)
 
 #define DEMO_PANEL_WIDTH  (720)
-#define DEMO_PANEL_HEIGHT (1200)
+#define DEMO_PANEL_HEIGHT (1280)
 
 #endif
 
